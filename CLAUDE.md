@@ -19,6 +19,10 @@ Dependencies are prose, not enforced links — read the ticket before starting a
 respect the stated order. `linear-agent list --delegated --json` shows what has
 been handed to the agent.
 
+Blockers and decisions only Diogo can make go on the ticket as a tagged comment,
+not just in the terminal — see the Linear section of the global `~/.claude/CLAUDE.md`
+for the mention format.
+
 ## Domain: what the norms actually require
 
 Source for the first rule set: *Normas para a elaboração de um Curriculum Vitae*,
