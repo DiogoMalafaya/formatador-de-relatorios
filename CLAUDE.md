@@ -94,5 +94,24 @@ Revisit if real reports show structures that HTML conversion mangles.
 npm run dev        # dev server
 npm run build      # production build
 npm run lint       # eslint
-npm run typecheck  # tsc --noEmit
+npm run typecheck  # next typegen && tsc --noEmit
+npm test           # node --test, files named *.test.mts
 ```
+
+Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
+stripping — no test framework. They import siblings with an explicit `.ts`
+extension because Node's ESM resolver does not do extension search.
+
+## Sessions
+
+`src/lib/session/` implements the ephemeral, account-free session (DIO-7).
+
+**The browser holds a session id and nothing else.** Storage keys, payment state
+and everything else live server-side in the record; a token is `<id>.<hmac>` and
+asserts nothing. Adding a payload to the token would invalidate the "cannot read
+another session" argument, so don't.
+
+`InMemorySessionStore` is dev/test only and `createSessionStore()` throws in
+production rather than let it ship — it loses state on restart and is not shared
+between instances, so the Stripe webhook and the student's browser could disagree
+about whether a session was paid. A shared store with TTL is still to be chosen.
