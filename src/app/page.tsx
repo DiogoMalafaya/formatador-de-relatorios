@@ -1,3 +1,4 @@
+import SpecialtySelect from "@/components/SpecialtySelect";
 import UploadZone from "@/components/UploadZone";
 import styles from "./page.module.css";
 
@@ -11,6 +12,7 @@ export default function Home() {
           Colégio da especialidade.
         </p>
         <UploadZone />
+        <SpecialtySelect />
       </main>
     </div>
   );
