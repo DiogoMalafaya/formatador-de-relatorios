@@ -1,0 +1,74 @@
+.wrapper {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.zone {
+  display: flex;
+  width: 100%;
+  min-height: 160px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px dashed var(--border, #ccc);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.zone:focus-visible {
+  outline: 2px solid #0070f3;
+  outline-offset: 2px;
+}
+
+.zoneDragOver {
+  border-color: #0070f3;
+  background-color: color-mix(in srgb, #0070f3 6%, transparent);
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.zoneTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.zoneHint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+
+.statusInfo,
+.statusError,
+.statusSuccess {
+  margin: 0;
+  font-size: 14px;
+}
+
+.statusError {
+  color: #c0392b;
+}
+
+.statusSuccess {
+  color: #1a7f37;
+}
+
+@media (max-width: 600px) {
+  .zone {
+    padding: 16px;
+  }
+}
