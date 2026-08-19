@@ -1,0 +1,46 @@
+.wrapper {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background-color: var(--foreground, #fff);
+  color: var(--text-primary, #000);
+}
+
+.select:focus-visible {
+  outline: 2px solid #0070f3;
+  outline-offset: 2px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+
+.statusError,
+.statusSuccess {
+  margin: 0;
+  font-size: 14px;
+}
+
+.statusError {
+  color: #c0392b;
+}
+
+.statusSuccess {
+  color: #1a7f37;
+}
