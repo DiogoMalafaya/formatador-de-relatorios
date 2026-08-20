@@ -35,9 +35,9 @@ they show up wrong there first.
 
 ## Deployment
 
-Built as a container (`Dockerfile`, Next.js standalone output) rather than a
-serverless target, because the PDF renderer needs headless Chromium and a real
-Node process.
+Deployed to Vercel. Headless Chromium for PDF rendering runs inside a Vercel
+serverless function — the 5GB large-function bundle limit covers it, so no
+container is needed.
 
 Secrets are injected as environment variables — see `.env.example`. **This
 repository is public: never commit real values.**
