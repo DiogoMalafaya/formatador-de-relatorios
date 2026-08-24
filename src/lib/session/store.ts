@@ -1,4 +1,7 @@
+import { FirestoreSessionStore } from "./firestore-store.ts";
 import type { SessionRecord, SessionStore } from "./types";
+
+export { FirestoreSessionStore } from "./firestore-store.ts";
 
 /**
  * In-memory session store.
@@ -11,12 +14,9 @@ import type { SessionRecord, SessionStore } from "./types";
  * the student's browser polls another. PRD §9 lists payment correctness as
  * never-cut, and this store cannot uphold it.
  *
- * Production needs a shared store with TTL support — Redis is the obvious fit,
- * and its native key expiry lines up with the retention guarantee. That choice
- * is still open; see the DIO-7 comment thread.
- *
- * `createSessionStore()` below refuses to hand this out in production rather
- * than letting the gap ship quietly.
+ * Production uses `FirestoreSessionStore` (DIO-21) — same Firebase project and
+ * service account as the object store (DIO-6), with a native TTL policy on
+ * `expiresAt` in place of a cron-driven purge.
  */
 export class InMemorySessionStore implements SessionStore {
   private readonly records = new Map<string, SessionRecord>();
@@ -85,16 +85,21 @@ export class InMemorySessionStore implements SessionStore {
 /**
  * Builds the store for the current environment.
  *
- * Throws in production rather than falling back to the in-memory store: an
- * outage is recoverable, and silently losing a paid student's document is not.
+ * Production uses Firestore (DIO-21). `FirestoreSessionStore` reads its own
+ * required secrets via the shared `getFirebaseApp()` helper and throws a clear
+ * "missing environment variable" error if they are absent, so a misconfigured
+ * deploy fails loudly rather than silently falling back to
+ * `InMemorySessionStore` — which loses state on restart and is not shared
+ * between instances, either of which would strand a paid student's session.
+ *
+ * `FirestoreSessionStore` is imported statically, but reaches the Admin SDK's
+ * credential-reading code only at construction time, not at module load — so
+ * this stays safe for `next build`, which runs with `NODE_ENV=production` but
+ * no deploy secrets.
  */
 export function createSessionStore(): SessionStore {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "No production session store is configured. InMemorySessionStore loses " +
-        "state on restart and is not shared between instances, which would " +
-        "drop paid sessions. Configure a shared store before deploying.",
-    );
+    return new FirestoreSessionStore();
   }
   return new InMemorySessionStore();
 }
