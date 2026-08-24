@@ -75,6 +75,3 @@ export const SPECIALTIES: readonly Specialty[] = [
   { id: "saude-publica", name: "Saúde Pública" },
   { id: "urologia", name: "Urologia" },
 ] as const;
-
-/** Applied whenever a specialty has no `ruleSetId` of its own. */
-export const GENERIC_RULE_SET_ID = "generic";
