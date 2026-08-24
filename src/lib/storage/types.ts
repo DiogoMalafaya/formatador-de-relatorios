@@ -8,6 +8,20 @@
  * backstop to the bucket lifecycle rule, not layered on afterwards.
  */
 
+/**
+ * Retention window for stored objects — the purge threshold, not the public
+ * promise.
+ *
+ * Must stay equal to `SESSION_TTL_MS` in `src/lib/session/index.ts` — the two
+ * clocks are the same guarantee expressed twice. Set to 22h (DIO-6 comment
+ * thread, 2026-08-20): the public promise is 48h (Vercel Hobby's daily cron
+ * plus day-granularity bucket lifecycle rules add up to ~24h of slop on top
+ * of whatever threshold is swept), and the threshold has to be the smaller
+ * number so the promise is never quietly broken. 22h leaves margin for cron
+ * scheduling slop.
+ */
+export const OBJECT_TTL_MS = 22 * 60 * 60 * 1000;
+
 export interface StoredObjectMeta {
   key: string;
   contentType: string;

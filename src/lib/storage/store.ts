@@ -1,15 +1,10 @@
 import { createHmac, randomBytes } from "node:crypto";
-import type { ObjectStore, StoredObjectMeta } from "./types";
+import { FirebaseObjectStore } from "./firebase-store.ts";
+import { OBJECT_TTL_MS } from "./types.ts";
+import type { ObjectStore, StoredObjectMeta } from "./types.ts";
 
-/**
- * Retention window for stored objects.
- *
- * Must stay equal to `SESSION_TTL_MS` in `src/lib/session/index.ts` — the two
- * clocks are the same guarantee expressed twice. Confirmed 24h (DIO-6 comment
- * thread, 2026-08-19): the flow is single-sitting, so a longer window adds
- * privacy exposure without adding user value.
- */
-export const OBJECT_TTL_MS = 24 * 60 * 60 * 1000;
+export { OBJECT_TTL_MS } from "./types.ts";
+export { FirebaseObjectStore } from "./firebase-store.ts";
 
 interface StoredObject extends StoredObjectMeta {
   data: Buffer;
@@ -112,23 +107,22 @@ const DEV_URL_SECRET = randomBytes(32).toString("hex");
 /**
  * Builds the store for the current environment.
  *
- * Throws in production rather than falling back to the in-memory store: an
- * outage is recoverable, silently losing a paid student's document is not.
+ * Production uses Firebase Storage (per the DIO-5/DIO-6 hosting decision) via
+ * `FirebaseObjectStore`. `FirebaseObjectStore` reads its own required secrets
+ * and throws a clear "missing environment variable" error if they are absent,
+ * so a misconfigured deploy fails loudly rather than silently falling back to
+ * `InMemoryObjectStore` — which loses state on restart and is not shared
+ * between instances, either of which would strand a paid student's rendered
+ * PDF.
  *
- * The production backend (Firebase Storage, per the DIO-5/DIO-6 hosting
- * decision) is not implemented here — same as `createSessionStore` (DIO-7),
- * which defers its own backend choice. Building it against unverifiable
- * credentials would ship untested code on the path that has to hold a
- * "no charging without delivering" guarantee; see the DIO-6 comment thread.
+ * `FirebaseObjectStore` is imported statically, but reaches the Admin SDK's
+ * credential-reading code only at construction time, not at module load — so
+ * this stays safe for `next build`, which runs with `NODE_ENV=production` but
+ * no deploy secrets.
  */
 export function createObjectStore(): ObjectStore {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "No production object store is configured. InMemoryObjectStore loses " +
-        "state on restart and is not shared between instances, which would " +
-        "strand a paid student's rendered PDF. Configure Firebase Storage " +
-        "before deploying.",
-    );
+    return new FirebaseObjectStore();
   }
   return new InMemoryObjectStore();
 }
