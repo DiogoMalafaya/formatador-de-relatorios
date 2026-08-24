@@ -1,8 +1,9 @@
-import { GENERIC_RULE_SET_ID, SPECIALTIES } from "./data.ts";
+import { GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
+import { SPECIALTIES } from "./data.ts";
 import type { Specialty } from "./data.ts";
 
 export type { Specialty } from "./data.ts";
-export { GENERIC_RULE_SET_ID } from "./data.ts";
+export { GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
 
 export function getSpecialties(): readonly Specialty[] {
   return SPECIALTIES;
