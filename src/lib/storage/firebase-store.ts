@@ -1,6 +1,5 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getStorage } from "firebase-admin/storage";
-import { requireSecret } from "../env.ts";
+import { getFirebaseApp } from "../firebase-app.ts";
 import { OBJECT_TTL_MS } from "./types.ts";
 import type { ObjectStore, StoredObjectMeta } from "./types.ts";
 
@@ -119,26 +118,7 @@ function isNotFoundError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && (error as { code: unknown }).code === 404;
 }
 
-/**
- * Builds the Admin SDK bucket handle from the service-account secrets.
- *
- * Reuses the default app across calls within the same process — `initializeApp`
- * throws if called twice for the same app name.
- */
+/** Builds the Admin SDK bucket handle from the shared Firebase app. */
 function getConfiguredBucket(): FirebaseBucket {
-  const projectId = requireSecret("FIREBASE_PROJECT_ID");
-  const clientEmail = requireSecret("FIREBASE_CLIENT_EMAIL");
-  // Service-account JSON keys carry literal "\n" once round-tripped through
-  // an env var; the Admin SDK needs the real newlines back.
-  const privateKey = requireSecret("FIREBASE_PRIVATE_KEY").replace(/\\n/g, "\n");
-  const storageBucket = requireSecret("FIREBASE_STORAGE_BUCKET");
-
-  const app =
-    getApps()[0] ??
-    initializeApp({
-      credential: cert({ projectId, clientEmail, privateKey }),
-      storageBucket,
-    });
-
-  return getStorage(app).bucket();
+  return getStorage(getFirebaseApp()).bucket();
 }

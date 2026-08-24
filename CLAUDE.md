@@ -120,7 +120,11 @@ and everything else live server-side in the record; a token is `<id>.<hmac>` and
 asserts nothing. Adding a payload to the token would invalidate the "cannot read
 another session" argument, so don't.
 
-`InMemorySessionStore` is dev/test only and `createSessionStore()` throws in
-production rather than let it ship — it loses state on restart and is not shared
-between instances, so the Stripe webhook and the student's browser could disagree
-about whether a session was paid. A shared store with TTL is still to be chosen.
+`InMemorySessionStore` is dev/test only — it loses state on restart and is not
+shared between instances, so the Stripe webhook and the student's browser could
+disagree about whether a session was paid. Production uses `FirestoreSessionStore`
+(DIO-21), same Firebase project and service account as the object store (DIO-6),
+via the shared `src/lib/firebase-app.ts` helper. Session `expiresAt` is stored as
+a Firestore `Timestamp` and collected by a native TTL policy (configured in the
+GCP console, not the SDK) instead of a cron-driven purge — see DIO-16 for why the
+*file* purge job is still needed regardless.
