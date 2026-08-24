@@ -60,22 +60,27 @@ with a documented default.
 
 ## Architecture
 
-Single Next.js 16 app (App Router, TypeScript), deployed as a container.
+Single Next.js 16 app (App Router, TypeScript), deployed to Vercel (Hobby plan,
+default `*.vercel.app` domain).
 
 ```
 upload .docx → parse → apply rule set → merge cover → render PDF
              → watermarked preview → Stripe → clean PDF → scheduled purge
 ```
 
-**Why a container and not serverless:** the PDF renderer needs headless Chromium
-and a real Node process. See `Dockerfile` and `next.config.ts`.
+**Serverless, not a container:** the scaffold originally assumed headless
+Chromium needed a container with a real Node process. That constraint no longer
+holds — Vercel raised the function bundle limit to 5GB for large functions
+(fluid compute, on by default for new projects), which comfortably fits headless
+Chromium. See the DIO-5 comment thread for the research behind the switch.
 
 **Proposed rendering pipeline (not yet built — DIO-10/DIO-11):** `.docx` →
-semantic HTML → rule-set CSS → Chromium `printToPDF`. CSS `@page` handles A4,
-2.5cm margins and the name+page-number footer directly, which maps onto the norms
-almost one-to-one. The alternative — editing OOXML and converting via LibreOffice
-— gives less precise control over exactly the parameters the norms specify.
-Revisit if real reports show structures that HTML conversion mangles.
+semantic HTML → rule-set CSS → Chromium `printToPDF`, run inside a Vercel
+serverless function. CSS `@page` handles A4, 2.5cm margins and the
+name+page-number footer directly, which maps onto the norms almost one-to-one.
+The alternative — editing OOXML and converting via LibreOffice — gives less
+precise control over exactly the parameters the norms specify. Revisit if real
+reports show structures that HTML conversion mangles.
 
 ## Conventions
 
