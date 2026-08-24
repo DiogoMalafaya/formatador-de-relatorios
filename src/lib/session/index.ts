@@ -10,12 +10,14 @@ export { InMemorySessionStore, createSessionStore } from "./store";
 /**
  * Session lifetime.
  *
- * Must stay equal to the object-storage retention window in DIO-6 — the two
+ * Must stay equal to `OBJECT_TTL_MS` in `src/lib/storage/types.ts` — the two
  * clocks are the same guarantee expressed twice, and drift between them either
  * strands a live session with deleted files or keeps a record past the privacy
- * commitment. 24h is the interim default; the 24-vs-48 decision is still open.
+ * commitment. Set to 22h (DIO-6 comment thread, 2026-08-20): the public
+ * promise is 48h, and a session cannot outlive the files it points at, so its
+ * lifetime cannot exceed the storage purge threshold.
  */
-export const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+export const SESSION_TTL_MS = 22 * 60 * 60 * 1000;
 
 /** Cookie carrying the session token across the round trip to Stripe and back. */
 export const SESSION_COOKIE_NAME = "fdr_session";

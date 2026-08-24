@@ -14,12 +14,11 @@ const SECRETS = [
   // DIO-14 / DIO-15 — Stripe
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
-  // DIO-6 — object storage
-  "STORAGE_ACCESS_KEY_ID",
-  "STORAGE_SECRET_ACCESS_KEY",
-  "STORAGE_BUCKET",
-  "STORAGE_REGION",
-  "STORAGE_ENDPOINT",
+  // DIO-6 — object storage (Firebase Storage, per the DIO-5 hosting decision)
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+  "FIREBASE_STORAGE_BUCKET",
   // DIO-7 — ephemeral session signing
   "SESSION_SIGNING_SECRET",
 ] as const;
