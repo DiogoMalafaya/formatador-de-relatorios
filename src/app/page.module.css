@@ -50,6 +50,18 @@
   color: var(--text-primary);
 }
 
+.paymentNotice {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: color-mix(in srgb, #0070f3 8%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .diacritics {
   font-family: var(--font-geist-mono);
   font-size: 0.9em;
