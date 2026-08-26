@@ -95,3 +95,13 @@ export async function updateSession(
 export function isPaid(record: SessionRecord): boolean {
   return record.payment.status === "paid";
 }
+
+/**
+ * Drop expired session records. Called by the scheduled purge job (DIO-16) as
+ * a backstop alongside Firestore's own TTL policy, which is the primary
+ * mechanism in production but — like the storage bucket's lifecycle rule —
+ * carries no timing guarantee.
+ */
+export async function purgeExpiredSessions(now?: number): Promise<number> {
+  return getStore().purgeExpired(now);
+}

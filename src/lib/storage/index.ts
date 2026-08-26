@@ -39,3 +39,9 @@ export async function getObjectSignedUrl(
 export async function deleteObject(key: string): Promise<void> {
   return getStore().delete(key);
 }
+
+/** Drop expired objects. Called by the scheduled purge job (DIO-16) as the
+ * application-level backstop to the bucket's own lifecycle rule. */
+export async function purgeExpiredObjects(now?: number): Promise<number> {
+  return getStore().purgeExpired(now);
+}
