@@ -1,4 +1,5 @@
 import CoverSelect from "@/components/CoverSelect";
+import PreviewPane from "@/components/PreviewPane";
 import SpecialtySelect from "@/components/SpecialtySelect";
 import UploadZone from "@/components/UploadZone";
 import styles from "./page.module.css";
@@ -15,6 +16,7 @@ export default function Home() {
         <UploadZone />
         <SpecialtySelect />
         <CoverSelect />
+        <PreviewPane />
       </main>
     </div>
   );
