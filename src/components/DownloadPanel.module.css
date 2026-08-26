@@ -1,0 +1,44 @@
+.wrapper {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.statusInfo {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary, #666);
+}
+
+.statusReady {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #000);
+}
+
+.statusError {
+  margin: 0;
+  font-size: 14px;
+  color: #c0392b;
+}
+
+.button {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  background-color: #0070f3;
+  border: none;
+  border-radius: 8px;
+}
+
+.button:focus-visible {
+  outline: 2px solid #0070f3;
+  outline-offset: 2px;
+}

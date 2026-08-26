@@ -21,6 +21,8 @@ const SECRETS = [
   "FIREBASE_STORAGE_BUCKET",
   // DIO-7 — ephemeral session signing
   "SESSION_SIGNING_SECRET",
+  // DIO-16 — scheduled purge job, checked against Vercel Cron's Authorization header
+  "CRON_SECRET",
 ] as const;
 
 export type SecretName = (typeof SECRETS)[number];

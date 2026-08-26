@@ -72,6 +72,18 @@ export async function getSessionByToken(
   return getStore().get(sessionId);
 }
 
+/**
+ * Look up a session by its raw id, bypassing token verification.
+ *
+ * Only for callers that never had a browser token to begin with — the Stripe
+ * webhook (DIO-15) knows the session id from `client_reference_id`, not from
+ * a cookie. Anything reachable from a request must keep using
+ * `getSessionByToken`.
+ */
+export async function getSessionById(id: string): Promise<SessionRecord | null> {
+  return getStore().get(id);
+}
+
 export async function updateSession(
   id: string,
   patch: Partial<Omit<SessionRecord, "id" | "createdAt" | "expiresAt">>,
@@ -82,4 +94,14 @@ export async function updateSession(
 /** True only when the webhook has confirmed payment (DIO-15). */
 export function isPaid(record: SessionRecord): boolean {
   return record.payment.status === "paid";
+}
+
+/**
+ * Drop expired session records. Called by the scheduled purge job (DIO-16) as
+ * a backstop alongside Firestore's own TTL policy, which is the primary
+ * mechanism in production but — like the storage bucket's lifecycle rule —
+ * carries no timing guarantee.
+ */
+export async function purgeExpiredSessions(now?: number): Promise<number> {
+  return getStore().purgeExpired(now);
 }
