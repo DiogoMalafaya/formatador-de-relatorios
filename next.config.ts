@@ -12,6 +12,23 @@ const nextConfig: NextConfig = {
    * fix the resulting error message itself points to.
    */
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+
+  /**
+   * `serverExternalPackages` alone wasn't enough: it stops the bundler from
+   * relocating the package, but Vercel's own output file tracing is a
+   * separate step, and it never detected that `@sparticuz/chromium`'s
+   * runtime code needs its `bin/*.br` binaries — they were simply missing
+   * from the deployed function, same "input directory does not exist"
+   * error as before. Forcing the include is Next's documented fix for
+   * exactly this class of native-binary package (see the `aws-crt` example
+   * in the `outputFileTracingIncludes` docs).
+   *
+   * Scoped to the one route that currently renders PDFs; add the DIO-15
+   * final-download route here too once it exists.
+   */
+  outputFileTracingIncludes: {
+    "/api/session/preview": ["./node_modules/@sparticuz/chromium/**/*"],
+  },
 };
 
 export default nextConfig;
