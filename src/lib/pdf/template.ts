@@ -7,6 +7,7 @@
 
 import type { FormattedDocument } from "../formatting/apply.ts";
 import type { RuleSet } from "../formatting/ruleSet.ts";
+import { escapeHtml } from "../html.ts";
 
 /** Wraps the parsed document + rule-set CSS into a full page Chromium can load. */
 export function buildHtmlDocument(document: FormattedDocument): string {
@@ -52,14 +53,4 @@ export function buildFooterTemplate(ruleSet: RuleSet, candidateName: string): st
   }
 
   return `<div style="width:100%; font-size:9px; font-family:Arial,sans-serif; text-align:center; color:#000;">${parts.join(" — ")}</div>`;
-}
-
-/** Footer/header templates are raw HTML Chromium renders as-is — escape untrusted input before it lands there. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }

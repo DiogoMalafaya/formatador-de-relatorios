@@ -9,6 +9,7 @@
  */
 
 import { parseDocxDocument } from "./parseDocx.ts";
+import { extractCandidateName } from "./extractName.ts";
 import { getRuleSet } from "./ruleSet.ts";
 import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { buildRuleSetCss, resolveChoices } from "./styles.ts";
@@ -33,6 +34,8 @@ export interface FormattedDocument {
   warnings: FormattingWarning[];
   /** The rule set actually applied — DIO-11 needs its margins/footer/header config to render a PDF. */
   ruleSet: RuleSet;
+  /** Best-effort guess at the candidate's name, for the cover page (DIO-12). Undefined when nothing usable was found. */
+  extractedCandidateName?: string;
 }
 
 export async function applyFormatting(
@@ -69,5 +72,6 @@ export async function applyFormatting(
     css: buildRuleSetCss(ruleSet, choices),
     warnings,
     ruleSet,
+    extractedCandidateName: extractCandidateName(parsed),
   };
 }
