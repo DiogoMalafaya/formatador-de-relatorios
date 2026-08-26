@@ -72,6 +72,18 @@ export async function getSessionByToken(
   return getStore().get(sessionId);
 }
 
+/**
+ * Look up a session by its raw id, bypassing token verification.
+ *
+ * Only for callers that never had a browser token to begin with — the Stripe
+ * webhook (DIO-15) knows the session id from `client_reference_id`, not from
+ * a cookie. Anything reachable from a request must keep using
+ * `getSessionByToken`.
+ */
+export async function getSessionById(id: string): Promise<SessionRecord | null> {
+  return getStore().get(id);
+}
+
 export async function updateSession(
   id: string,
   patch: Partial<Omit<SessionRecord, "id" | "createdAt" | "expiresAt">>,

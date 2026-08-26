@@ -23,11 +23,11 @@ const nextConfig: NextConfig = {
    * exactly this class of native-binary package (see the `aws-crt` example
    * in the `outputFileTracingIncludes` docs).
    *
-   * Scoped to the one route that currently renders PDFs; add the DIO-15
-   * final-download route here too once it exists.
+   * Scoped to the routes that actually render PDFs.
    */
   outputFileTracingIncludes: {
     "/api/session/preview": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/session/download": ["./node_modules/@sparticuz/chromium/**/*"],
   },
 };
 
