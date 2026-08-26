@@ -1,8 +1,8 @@
-import { createObjectStore } from "./store";
-import type { ObjectStore } from "./types";
+import { createObjectStore } from "./store.ts";
+import type { ObjectStore } from "./types.ts";
 
-export type { ObjectStore, StoredObjectMeta } from "./types";
-export { InMemoryObjectStore, createObjectStore, OBJECT_TTL_MS } from "./store";
+export type { ObjectStore, StoredObjectMeta } from "./types.ts";
+export { InMemoryObjectStore, createObjectStore, OBJECT_TTL_MS } from "./store.ts";
 
 let store: ObjectStore | undefined;
 

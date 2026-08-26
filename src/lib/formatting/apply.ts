@@ -10,7 +10,7 @@
 
 import { parseDocxDocument } from "./parseDocx.ts";
 import { getRuleSet } from "./ruleSet.ts";
-import type { FontFamily, TitleSizePt } from "./ruleSet.ts";
+import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { buildRuleSetCss, resolveChoices } from "./styles.ts";
 import { estimatePageCount } from "./pageEstimate.ts";
 import {
@@ -31,6 +31,8 @@ export interface FormattedDocument {
   html: string;
   css: string;
   warnings: FormattingWarning[];
+  /** The rule set actually applied — DIO-11 needs its margins/footer/header config to render a PDF. */
+  ruleSet: RuleSet;
 }
 
 export async function applyFormatting(
@@ -66,5 +68,6 @@ export async function applyFormatting(
     html: parsed.html,
     css: buildRuleSetCss(ruleSet, choices),
     warnings,
+    ruleSet,
   };
 }
