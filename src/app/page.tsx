@@ -29,6 +29,11 @@ export default async function Home({ searchParams }: HomeProps) {
         )}
         {pagamento === "sucesso" && <DownloadPanel />}
 
+        <p className={styles.patientDataNotice}>
+          Antes de carregares: se o teu currículo mencionar doentes (por exemplo, na casuística),
+          remove ou anonimiza essa informação — não é necessária para a formatação.
+        </p>
+
         <UploadZone />
         <SpecialtySelect />
         <CoverSelect />
