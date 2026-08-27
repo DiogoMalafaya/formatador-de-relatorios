@@ -1,0 +1,6 @@
+.summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-foreground, #555);
+  overflow-wrap: break-word;
+}
