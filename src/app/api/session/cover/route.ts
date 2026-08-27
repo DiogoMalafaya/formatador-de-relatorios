@@ -1,6 +1,7 @@
 import { updateSession } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
 import { getCoverById } from "@/lib/covers";
+import { SESSION_EXPIRED_PT, UNEXPECTED_ERROR_PT } from "@/lib/errors/messages";
 
 /**
  * Records the selected cover template against the current session (DIO-12).
@@ -35,15 +36,20 @@ export async function POST(request: Request) {
   const session = await getCurrentSession();
   if (!session) {
     return Response.json(
-      {
-        ok: false,
-        errorMessagePt: "A tua sessão expirou. Carrega novamente o teu currículo.",
-      },
+      { ok: false, errorMessagePt: SESSION_EXPIRED_PT },
       { status: 401 },
     );
   }
 
-  await updateSession(session.id, { coverId });
+  try {
+    await updateSession(session.id, { coverId });
+  } catch (error) {
+    console.error("[session/cover] update failed", error);
+    return Response.json(
+      { ok: false, errorMessagePt: UNEXPECTED_ERROR_PT },
+      { status: 500 },
+    );
+  }
 
   return Response.json({ ok: true, coverId });
 }

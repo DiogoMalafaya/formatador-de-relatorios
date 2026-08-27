@@ -1,0 +1,30 @@
+.wrapper {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background-color: #fdf6e3;
+  border: 1px solid #e8d9a0;
+  border-radius: 8px;
+}
+
+.heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b5a1c;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.item {
+  font-size: 13px;
+  color: #6b5a1c;
+}

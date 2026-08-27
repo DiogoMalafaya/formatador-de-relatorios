@@ -2,6 +2,7 @@ import { createSession, getSessionByToken, updateSession } from "@/lib/session";
 import { readSessionCookie, setSessionCookie } from "@/lib/session/cookies";
 import { putObject } from "@/lib/storage";
 import { DOCX_CONTENT_TYPE, validateUpload } from "@/lib/upload/validate";
+import { UNEXPECTED_ERROR_PT } from "@/lib/errors/messages";
 
 /**
  * Upload endpoint (DIO-8).
@@ -55,24 +56,32 @@ export async function POST(request: Request) {
 
   let sessionId: string;
   let tokenToSet: string | null = null;
-  if (existing) {
-    sessionId = existing.id;
-  } else {
-    const created = await createSession();
-    sessionId = created.record.id;
-    tokenToSet = created.token;
+  try {
+    if (existing) {
+      sessionId = existing.id;
+    } else {
+      const created = await createSession();
+      sessionId = created.record.id;
+      tokenToSet = created.token;
+    }
+
+    const storageKey = `${sessionId}/upload.docx`;
+    await putObject(storageKey, buffer, file.type || DOCX_CONTENT_TYPE);
+
+    await updateSession(sessionId, {
+      upload: {
+        storageKey,
+        originalFilename: file.name,
+        sizeBytes: buffer.byteLength,
+      },
+    });
+  } catch (error) {
+    console.error("[upload] storage/session write failed", error);
+    return Response.json(
+      { ok: false, errorMessagePt: UNEXPECTED_ERROR_PT },
+      { status: 500 },
+    );
   }
-
-  const storageKey = `${sessionId}/upload.docx`;
-  await putObject(storageKey, buffer, file.type || DOCX_CONTENT_TYPE);
-
-  await updateSession(sessionId, {
-    upload: {
-      storageKey,
-      originalFilename: file.name,
-      sizeBytes: buffer.byteLength,
-    },
-  });
 
   if (tokenToSet) {
     await setSessionCookie(tokenToSet);
