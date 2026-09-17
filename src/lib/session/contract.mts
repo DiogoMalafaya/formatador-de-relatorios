@@ -87,6 +87,15 @@ export function defineSessionStoreContract(
         assert.equal(await store.update(generateSessionId(), { coverId: "x" }), null);
       });
 
+      test("round-trips wizard progress (DIO-37)", async () => {
+        const record = makeRecord();
+        await store.create(record);
+
+        const updated = await store.update(record.id, { setupStep: 3 });
+        assert.equal(updated?.setupStep, 3);
+        assert.equal((await store.get(record.id))?.setupStep, 3);
+      });
+
       test("cannot extend expiry", async () => {
         const record = makeRecord();
         await store.create(record);

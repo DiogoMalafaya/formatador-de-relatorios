@@ -24,10 +24,28 @@ export const SESSION_COOKIE_NAME = "fdr_session";
 
 let store: SessionStore | undefined;
 
+/**
+ * Dev-only anchor for the in-memory store. Next.js keeps separate module
+ * graphs for server components and route handlers, so in `next dev` a plain
+ * module-level singleton would give the landing page (which reads the session
+ * to restore wizard progress, DIO-37) a *different* `InMemorySessionStore`
+ * than the API routes that write it. `globalThis` is shared across graphs and
+ * survives HMR. Production is unaffected: `FirestoreSessionStore` shares
+ * state externally, and gets the plain module singleton below.
+ */
+const devGlobal = globalThis as typeof globalThis & {
+  __fdrDevSessionStore?: SessionStore;
+};
+
 /** Lazily built so importing this module does not throw during `next build`. */
 function getStore(): SessionStore {
-  store ??= createSessionStore();
-  return store;
+  if (store) return store;
+  if (process.env.NODE_ENV === "production") {
+    store = createSessionStore();
+    return store;
+  }
+  devGlobal.__fdrDevSessionStore ??= createSessionStore();
+  return devGlobal.__fdrDevSessionStore;
 }
 
 /** Test seam. */

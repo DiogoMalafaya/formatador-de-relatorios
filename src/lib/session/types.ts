@@ -39,6 +39,13 @@ export interface SessionRecord {
   specialtyId?: string;
   /** Cover template id from DIO-12. */
   coverId?: string;
+  /**
+   * Guided setup wizard progress (DIO-37): 1 = upload, 2 = specialty,
+   * 3 = cover, 4 = review. UI convenience so a refresh restores the current
+   * step — routes must keep validating the record itself (upload, specialty,
+   * cover presence), never trust this number for anything.
+   */
+  setupStep?: number;
 
   payment: {
     status: PaymentStatus;
