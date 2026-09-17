@@ -22,6 +22,14 @@
  */
 export const OBJECT_TTL_MS = 22 * 60 * 60 * 1000;
 
+/**
+ * The public retention promise (DIO-19's privacy policy quotes this
+ * directly, rather than a bare "48"), kept apart from `OBJECT_TTL_MS` above
+ * since it's a rounded external commitment, not the internal threshold
+ * itself — see `types.test.mts` for the guard that keeps the two honest.
+ */
+export const PUBLIC_RETENTION_HOURS = 48;
+
 export interface StoredObjectMeta {
   key: string;
   contentType: string;
