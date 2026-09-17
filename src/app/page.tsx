@@ -1,6 +1,7 @@
 import CheckoutButton from "@/components/CheckoutButton";
 import CoverSelect from "@/components/CoverSelect";
 import DownloadPanel from "@/components/DownloadPanel";
+import FormattingSummary from "@/components/FormattingSummary";
 import FormattingWarnings from "@/components/FormattingWarnings";
 import PreviewPane from "@/components/PreviewPane";
 import SpecialtySelect from "@/components/SpecialtySelect";
@@ -33,6 +34,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <UploadZone />
         <SpecialtySelect />
         <CoverSelect />
+        <FormattingSummary />
         <FormattingWarnings />
         <PreviewPane />
         <CheckoutButton />
