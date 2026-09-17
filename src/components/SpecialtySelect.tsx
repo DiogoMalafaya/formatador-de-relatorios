@@ -19,9 +19,16 @@ type Status =
   | { kind: "error"; message: string }
   | { kind: "saved" };
 
-export default function SpecialtySelect() {
+interface SpecialtySelectProps {
+  /** Restores a previously saved choice when the wizard step is revisited (DIO-37). */
+  initialSpecialtyId?: string;
+  /** Notifies the setup wizard (DIO-37) that this step is now satisfied. */
+  onSaved?: (specialtyId: string) => void;
+}
+
+export default function SpecialtySelect({ initialSpecialtyId, onSaved }: SpecialtySelectProps) {
   const specialties = getSpecialties();
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(initialSpecialtyId ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   async function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
@@ -46,6 +53,7 @@ export default function SpecialtySelect() {
         return;
       }
       setStatus({ kind: "saved" });
+      onSaved?.(specialtyId);
     } catch {
       setStatus({
         kind: "error",

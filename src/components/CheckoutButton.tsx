@@ -12,7 +12,16 @@ import styles from "./CheckoutButton.module.css";
 
 type Status = "idle" | "loading" | "error";
 
-export default function CheckoutButton() {
+interface CheckoutButtonProps {
+  /**
+   * Formatted price, rendered server-side from `src/lib/payment/pricing.ts`
+   * (DIO-37) so the button never carries a hardcoded amount that could drift
+   * from what Stripe actually charges.
+   */
+  priceLabelPt: string;
+}
+
+export default function CheckoutButton({ priceLabelPt }: CheckoutButtonProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +60,9 @@ export default function CheckoutButton() {
         onClick={() => void startCheckout()}
         disabled={status === "loading"}
       >
-        {status === "loading" ? "A abrir o pagamento…" : "Comprar download sem marca de água — 150€"}
+        {status === "loading"
+          ? "A abrir o pagamento…"
+          : `Comprar download sem marca de água — ${priceLabelPt}`}
       </button>
 
       {error && (

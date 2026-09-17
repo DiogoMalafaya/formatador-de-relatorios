@@ -2,49 +2,58 @@
   display: flex;
   width: 100%;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .label {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 .gallery {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .card {
   display: flex;
-  width: 96px;
+  width: 108px;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2);
   cursor: pointer;
-  background-color: var(--foreground, #fff);
-  border: 1px solid var(--border, #ccc);
-  border-radius: 8px;
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
 }
 
 .card:focus-visible {
-  outline: 2px solid #0070f3;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
-.cardSelected {
-  border-color: #0070f3;
-  box-shadow: 0 0 0 1px #0070f3;
+.cardSelected,
+.cardSelected:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 .thumbnail {
   display: block;
   width: 100%;
-  border: 1px solid var(--border, #ebebeb);
-  border-radius: 4px;
+  background-color: var(--color-page-white); /* cover thumbnails depict the norm-white page */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -55,8 +64,8 @@
 }
 
 .cardName {
-  font-size: 12px;
-  color: var(--text-primary, #000);
+  font-size: var(--text-xs);
+  color: var(--color-ink-soft);
   text-align: center;
 }
 
@@ -64,17 +73,17 @@
 .statusSuccess,
 .statusInfo {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .statusError {
-  color: #c0392b;
+  color: var(--color-danger);
 }
 
 .statusSuccess {
-  color: #1a7f37;
+  color: var(--color-success);
 }
 
 .statusInfo {
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-soft);
 }

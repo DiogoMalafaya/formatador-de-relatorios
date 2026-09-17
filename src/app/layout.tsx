@@ -1,16 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/**
+ * Editorial type pairing (DIO-37): Fraunces, a serif with real display
+ * character, for headings; Source Sans 3 for body copy. Both are variable
+ * fonts self-hosted by `next/font`, so no request ever leaves for Google.
+ * The `-next` suffix keeps these raw variables distinct from the semantic
+ * `--font-display` / `--font-body` tokens in globals.css, which add the
+ * fallback stacks.
+ */
+const fraunces = Fraunces({
   subsets: ["latin"],
+  variable: "--font-display-next",
+  axes: ["opsz"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sourceSans = Source_Sans_3({
   subsets: ["latin"],
+  variable: "--font-body-next",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-PT" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="pt-PT" className={`${fraunces.variable} ${sourceSans.variable}`}>
       <body>
         {children}
         <Footer />

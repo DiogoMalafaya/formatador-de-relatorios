@@ -2,16 +2,21 @@
   display: flex;
   width: 100%;
   justify-content: center;
-  gap: 24px;
-  padding: 24px;
-  font-size: 13px;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: auto;
+  padding: var(--space-5);
+  font-size: var(--text-xs);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-paper);
 }
 
 .footer a {
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   text-decoration: none;
 }
 
 .footer a:hover {
+  color: var(--color-ink);
   text-decoration: underline;
 }

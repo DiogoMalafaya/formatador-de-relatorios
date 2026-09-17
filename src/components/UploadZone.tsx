@@ -32,8 +32,17 @@ function precheck(file: File): string | null {
   return null;
 }
 
-export default function UploadZone() {
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+interface UploadZoneProps {
+  /** Set when the session already holds an upload, so a revisited step 1 shows it (DIO-37). */
+  initialFilename?: string;
+  /** Notifies the setup wizard (DIO-37) that this step is now satisfied. */
+  onUploaded?: (filename: string) => void;
+}
+
+export default function UploadZone({ initialFilename, onUploaded }: UploadZoneProps) {
+  const [status, setStatus] = useState<Status>(
+    initialFilename ? { kind: "success", filename: initialFilename } : { kind: "idle" },
+  );
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +70,7 @@ export default function UploadZone() {
       }
 
       setStatus({ kind: "success", filename: file.name });
+      onUploaded?.(file.name);
     } catch {
       setStatus({
         kind: "error",

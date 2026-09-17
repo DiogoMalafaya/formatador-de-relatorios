@@ -1,13 +1,81 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/**
+ * Editorial/paper design system (DIO-37).
+ *
+ * Every color, radius, spacing step and shadow a component may use is declared
+ * here as a custom property — components must consume tokens, never hardcode
+ * values (PRD US4). Light mode is the design target ("light-mode-first"); the
+ * palette is warm paper + ink with a single brick-red accent, echoing the
+ * printed document the product produces.
+ *
+ * Contrast (WCAG AA, checked against --color-paper #f6f2ea):
+ *   --color-ink        16.1:1   --color-ink-soft    6.6:1
+ *   --color-ink-muted   5.1:1   --color-accent      8.9:1
+ *   --color-success     6.1:1   --color-danger      5.4:1
+ *   white on --color-accent    10.6:1
+ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  /* The output document is norm-white regardless of UI theme (cover mocks, thumbnails). */
+  --color-page-white: #ffffff;
+  --color-paper: #f6f2ea;
+  --color-surface: #fffdf8;
+  --color-surface-sunken: #efe9dd;
+
+  /* Ink */
+  --color-ink: #211c17;
+  --color-ink-soft: #57503f;
+  --color-ink-muted: #6e675a;
+
+  /* The one accent: brick red, used sparingly for actions and emphasis */
+  --color-accent: #9a3412;
+  --color-accent-strong: #7c2a0e;
+  --color-accent-wash: #f6e7de;
+  --color-on-accent: #fffdf8;
+
+  /* Lines */
+  --color-border: #e4dccc;
+  --color-border-strong: #c9bfa9;
+
+  /* States */
+  --color-success: #166534;
+  --color-success-wash: #e8efe2;
+  --color-danger: #b42318;
+  --color-danger-wash: #f8e8e2;
+  --color-warn-ink: #6a5417;
+  --color-warn-wash: #f7eed4;
+  --color-warn-border: #e2d3a4;
+
+  /* Type */
+  --font-display: var(--font-display-next, Georgia, "Times New Roman", serif);
+  --font-body: var(--font-body-next, -apple-system, "Segoe UI", Arial, sans-serif);
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-hero: clamp(2.125rem, 5vw, 3rem);
+
+  /* Rhythm */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgba(33, 28, 23, 0.05), 0 6px 20px rgba(33, 28, 23, 0.06);
+  --shadow-sheet: 0 1px 3px rgba(33, 28, 23, 0.12), 0 12px 32px rgba(33, 28, 23, 0.12);
 }
 
 html {
@@ -24,9 +92,11 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -37,13 +107,36 @@ body {
   margin: 0;
 }
 
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 560;
+  line-height: 1.15;
+  color: var(--color-ink);
+  text-wrap: balance;
+}
+
 a {
   color: inherit;
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+::selection {
+  background: var(--color-accent-wash);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

@@ -2,29 +2,29 @@
   display: flex;
   width: 100%;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
-  background-color: #fdf6e3;
-  border: 1px solid #e8d9a0;
-  border-radius: 8px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-warn-wash);
+  border: 1px solid var(--color-warn-border);
+  border-radius: var(--radius-md);
 }
 
 .heading {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b5a1c;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-warn-ink);
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   margin: 0;
-  padding-left: 18px;
+  padding-left: var(--space-4);
 }
 
 .item {
-  font-size: 13px;
-  color: #6b5a1c;
+  font-size: var(--text-sm);
+  color: var(--color-warn-ink);
 }

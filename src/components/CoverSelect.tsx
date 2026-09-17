@@ -16,9 +16,16 @@ type Status =
   | { kind: "error"; message: string }
   | { kind: "saved" };
 
-export default function CoverSelect() {
+interface CoverSelectProps {
+  /** Restores a previously saved choice when the wizard step is revisited (DIO-37). */
+  initialCoverId?: string;
+  /** Notifies the setup wizard (DIO-37) that this step is now satisfied. */
+  onSaved?: (coverId: string) => void;
+}
+
+export default function CoverSelect({ initialCoverId, onSaved }: CoverSelectProps) {
   const covers = getCovers();
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(initialCoverId ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   async function handleSelect(coverId: string) {
@@ -40,6 +47,7 @@ export default function CoverSelect() {
         return;
       }
       setStatus({ kind: "saved" });
+      onSaved?.(coverId);
     } catch {
       setStatus({
         kind: "error",
