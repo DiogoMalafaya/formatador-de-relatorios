@@ -6,8 +6,20 @@
  * a client-side check is a UX affordance, never a substitute).
  */
 
-/** 20MB. PRD placeholder, confirmed generous for a CV without embedded video. */
+/**
+ * Upload caps (DIO-40). The single source of truth — client-side checks and
+ * every route import from here.
+ *
+ * PROVISIONAL pending Diogo's confirmation (PRD §12 Q1): 20 files / 60 MB
+ * combined is the PRD's own proposal, 20 MB per file carries over from the
+ * single-file flow (DIO-8). Adjust the numbers here only.
+ */
+/** Per-file cap: 20MB. Confirmed generous for a CV chapter without embedded video. */
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+/** Maximum number of source documents per session (documento principal + chapters). */
+export const MAX_SOURCE_FILES = 20;
+/** Combined size cap across every stored source of a session: 60MB. */
+export const MAX_COMBINED_UPLOAD_BYTES = 60 * 1024 * 1024;
 
 const ACCEPTED_EXTENSION = ".docx";
 
@@ -59,6 +71,36 @@ export function validateUpload(candidate: UploadCandidate | null): UploadValidat
     return {
       ok: false,
       errorMessagePt: "O ficheiro não é um documento .docx válido.",
+    };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Collection-level caps for the multi-file CV (DIO-40): file count and
+ * combined size across everything the session already stores plus what this
+ * request adds. Per-file checks stay in `validateUpload`; this only answers
+ * "does the whole set still fit?". Pure for the same reason as above — the
+ * wizard runs it for instant feedback, the upload route as the real control.
+ */
+export function validateSourceCollection(input: {
+  existingCount: number;
+  existingCombinedBytes: number;
+  addedCount: number;
+  addedBytes: number;
+}): UploadValidationResult {
+  if (input.existingCount + input.addedCount > MAX_SOURCE_FILES) {
+    return {
+      ok: false,
+      errorMessagePt: `Podes carregar no máximo ${MAX_SOURCE_FILES} ficheiros.`,
+    };
+  }
+
+  if (input.existingCombinedBytes + input.addedBytes > MAX_COMBINED_UPLOAD_BYTES) {
+    return {
+      ok: false,
+      errorMessagePt: `O conjunto dos ficheiros excede o limite de ${MAX_COMBINED_UPLOAD_BYTES / (1024 * 1024)} MB.`,
     };
   }
 

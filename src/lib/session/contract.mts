@@ -50,6 +50,37 @@ export function defineSessionStoreContract(
       assert.equal(await store.get(generateSessionId()), null);
     });
 
+    // --- DIO-40: multi-file source list is part of the record shape ---
+
+    test("round-trips a multi-file record (sources + masterIndex)", async () => {
+      const record = makeRecord({
+        sources: [
+          { index: 2, storageKey: "s/source/2.docx", originalFilename: "capítulo-1.docx", sizeBytes: 30 },
+          { index: 0, storageKey: "s/source/0.docx", originalFilename: "principal.docx", sizeBytes: 10 },
+          { index: 1, storageKey: "s/source/1.docx", originalFilename: "capítulo-2.docx", sizeBytes: 20 },
+        ],
+        masterIndex: 0,
+      });
+      await store.create(record);
+
+      // Array order is the chapter order and must survive persistence
+      // exactly — Firestore array-of-map conversion included.
+      assert.deepEqual(await store.get(record.id), record);
+    });
+
+    test("updating the source order persists it", async () => {
+      const chapterA = { index: 0, storageKey: "s/source/0.docx", originalFilename: "a.docx", sizeBytes: 1 };
+      const chapterB = { index: 1, storageKey: "s/source/1.docx", originalFilename: "b.docx", sizeBytes: 2 };
+      const record = makeRecord({ sources: [chapterA, chapterB], masterIndex: 0 });
+      await store.create(record);
+
+      await store.update(record.id, { sources: [chapterB, chapterA], masterIndex: 1 });
+
+      const fetched = await store.get(record.id);
+      assert.deepEqual(fetched?.sources, [chapterB, chapterA]);
+      assert.equal(fetched?.masterIndex, 1);
+    });
+
     // --- AC: "A valid token for session A cannot retrieve session B's files." ---
 
     test("sessions are isolated from one another", async () => {

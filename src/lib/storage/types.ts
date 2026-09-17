@@ -1,11 +1,17 @@
 /**
  * Ephemeral object storage (DIO-6).
  *
- * Holds the uploaded `.docx`, the watermarked preview PDF (DIO-13), and the
- * final clean PDF (DIO-15) — all keyed by session id (DIO-7), all gone by the
- * same clock the session record itself expires on. PRD §9 lists the deletion
- * guarantee as never-cut, so expiry is enforced at the store level as a
- * backstop to the bucket lifecycle rule, not layered on afterwards.
+ * Holds the uploaded source `.docx` files (`{sessionId}/source/{index}.docx`
+ * since DIO-40), the watermarked preview PDF (DIO-13), and the final clean
+ * PDF (DIO-15) — all keyed by session id (DIO-7), all gone by the same clock
+ * the session record itself expires on. PRD §9 lists the deletion guarantee
+ * as never-cut, so expiry is enforced at the store level as a backstop to
+ * the bucket lifecycle rule, not layered on afterwards.
+ *
+ * Purging is deliberately key-shape agnostic: every object gets `expiresAt`
+ * stamped at `put` time and `purgeExpired` sweeps by that stamp alone, so a
+ * new key layout (like DIO-40's `source/{index}`) is covered the moment it
+ * exists rather than depending on someone updating a key-pattern list.
  */
 
 /**

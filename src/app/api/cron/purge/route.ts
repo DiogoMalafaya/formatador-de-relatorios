@@ -16,6 +16,14 @@ import { purgeExpiredObjects } from "@/lib/storage";
  * removes records/objects already past `expiresAt`, so a second run in the
  * same window finds nothing left to do.
  *
+ * Coverage is by expiry stamp, not key pattern: `purgeExpired` sweeps every
+ * stored object whose `expiresAt` (stamped at `put` time) has passed,
+ * whatever its key looks like. The multi-file source layout of DIO-40
+ * (`{sessionId}/source/{index}.docx`) is therefore fully covered — including
+ * files the student removed from the list whose best-effort delete failed —
+ * with no key list here to keep in sync. Never-cut: uploads may contain
+ * patient data (see `storage/store.test.mts` for the guarding test).
+ *
  * Auth: Vercel automatically attaches `Authorization: Bearer $CRON_SECRET` to
  * cron-triggered requests when that env var is set — this is what rejects
  * any other caller. See the docs in `.env.example`.
