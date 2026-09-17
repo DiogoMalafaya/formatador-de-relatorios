@@ -1,6 +1,7 @@
 import { updateSession } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
 import { PreviewNotReadyError, renderPreviewPdf, PREVIEW_CONTENT_TYPE } from "@/lib/preview/renderPreview";
+import { SESSION_EXPIRED_PT, UNEXPECTED_ERROR_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
 
 /**
  * Streams the watermarked preview (DIO-13) for the current session,
@@ -16,10 +17,7 @@ export async function GET() {
   const session = await getCurrentSession();
   if (!session) {
     return Response.json(
-      {
-        ok: false,
-        errorMessagePt: "A tua sessão expirou. Carrega novamente o teu currículo.",
-      },
+      { ok: false, errorMessagePt: SESSION_EXPIRED_PT },
       { status: 401 },
     );
   }
@@ -30,14 +28,15 @@ export async function GET() {
   } catch (error) {
     if (error instanceof PreviewNotReadyError) {
       return Response.json(
-        {
-          ok: false,
-          errorMessagePt: "Carrega primeiro o teu currículo para gerar a pré-visualização.",
-        },
+        { ok: false, errorMessagePt: UPLOAD_REQUIRED_PT },
         { status: 409 },
       );
     }
-    throw error;
+    console.error("[session/preview] render failed", error);
+    return Response.json(
+      { ok: false, errorMessagePt: UNEXPECTED_ERROR_PT },
+      { status: 500 },
+    );
   }
 
   await updateSession(session.id, {

@@ -1,5 +1,6 @@
 import { isPaid } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
+import { SESSION_EXPIRED_PT } from "@/lib/errors/messages";
 
 /**
  * Lightweight payment-status check (DIO-15), polled by the browser after the
@@ -11,10 +12,7 @@ export async function GET() {
   const session = await getCurrentSession();
   if (!session) {
     return Response.json(
-      {
-        ok: false,
-        errorMessagePt: "A tua sessão expirou. Carrega novamente o teu currículo.",
-      },
+      { ok: false, errorMessagePt: SESSION_EXPIRED_PT },
       { status: 401 },
     );
   }

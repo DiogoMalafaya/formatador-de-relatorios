@@ -1,6 +1,7 @@
 import { isPaid, updateSession } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
 import { FINAL_CONTENT_TYPE, FinalNotReadyError, renderFinalPdf } from "@/lib/final/renderFinal";
+import { SESSION_EXPIRED_PT, UNEXPECTED_ERROR_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
 
 /**
  * Serves the clean, non-watermarked PDF (DIO-15) — the thing that was paid
@@ -12,10 +13,7 @@ export async function GET() {
   const session = await getCurrentSession();
   if (!session) {
     return Response.json(
-      {
-        ok: false,
-        errorMessagePt: "A tua sessão expirou. Carrega novamente o teu currículo.",
-      },
+      { ok: false, errorMessagePt: SESSION_EXPIRED_PT },
       { status: 401 },
     );
   }
@@ -36,14 +34,15 @@ export async function GET() {
   } catch (error) {
     if (error instanceof FinalNotReadyError) {
       return Response.json(
-        {
-          ok: false,
-          errorMessagePt: "Carrega primeiro o teu currículo.",
-        },
+        { ok: false, errorMessagePt: UPLOAD_REQUIRED_PT },
         { status: 409 },
       );
     }
-    throw error;
+    console.error("[session/download] render failed", error);
+    return Response.json(
+      { ok: false, errorMessagePt: UNEXPECTED_ERROR_PT },
+      { status: 500 },
+    );
   }
 
   await updateSession(session.id, {

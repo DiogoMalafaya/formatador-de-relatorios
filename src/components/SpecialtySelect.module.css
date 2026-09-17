@@ -32,7 +32,8 @@
 }
 
 .statusError,
-.statusSuccess {
+.statusSuccess,
+.statusInfo {
   margin: 0;
   font-size: 14px;
 }
@@ -43,4 +44,8 @@
 
 .statusSuccess {
   color: #1a7f37;
+}
+
+.statusInfo {
+  color: var(--text-secondary, #666);
 }

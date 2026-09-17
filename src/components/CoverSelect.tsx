@@ -70,6 +70,11 @@ export default function CoverSelect() {
         ))}
       </div>
 
+      {status.kind === "saving" && (
+        <p className={styles.statusInfo} role="status">
+          A guardar…
+        </p>
+      )}
       {status.kind === "error" && (
         <p className={styles.statusError} role="alert">
           {status.message}

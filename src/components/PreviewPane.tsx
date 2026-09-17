@@ -37,7 +37,7 @@ export default function PreviewPane() {
           | null;
         setStatus({
           kind: "error",
-          message: body?.errorMessagePt ?? "Não foi possível gerar a pré-visualização.",
+          message: body?.errorMessagePt ?? "Não foi possível gerar a pré-visualização. Tenta novamente.",
         });
         return;
       }

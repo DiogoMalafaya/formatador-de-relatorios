@@ -17,11 +17,49 @@ type Status =
   | { kind: "delayed" }
   | { kind: "error"; message: string };
 
+type DownloadState =
+  | { kind: "idle" }
+  | { kind: "downloading" }
+  | { kind: "error"; message: string };
+
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 60000;
 
 export default function DownloadPanel() {
   const [status, setStatus] = useState<Status>({ kind: "polling" });
+  const [downloadState, setDownloadState] = useState<DownloadState>({ kind: "idle" });
+
+  async function handleDownload() {
+    setDownloadState({ kind: "downloading" });
+
+    try {
+      const response = await fetch("/api/session/download");
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as
+          | { errorMessagePt?: string }
+          | null;
+        setDownloadState({
+          kind: "error",
+          message: body?.errorMessagePt ?? "Não foi possível descarregar o teu currículo. Tenta novamente.",
+        });
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "curriculo-formatado.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+      setDownloadState({ kind: "idle" });
+    } catch {
+      setDownloadState({
+        kind: "error",
+        message: "Não foi possível descarregar o teu currículo. Tenta novamente.",
+      });
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -77,9 +115,19 @@ export default function DownloadPanel() {
     return (
       <div className={styles.wrapper}>
         <p className={styles.statusReady}>O teu currículo está pronto.</p>
-        <a className={styles.button} href="/api/session/download">
-          Descarregar currículo
-        </a>
+        <button
+          type="button"
+          className={styles.button}
+          onClick={() => void handleDownload()}
+          disabled={downloadState.kind === "downloading"}
+        >
+          {downloadState.kind === "downloading" ? "A descarregar…" : "Descarregar currículo"}
+        </button>
+        {downloadState.kind === "error" && (
+          <p className={styles.statusError} role="alert">
+            {downloadState.message}
+          </p>
+        )}
       </div>
     );
   }
