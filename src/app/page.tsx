@@ -1,9 +1,10 @@
 import DocumentMock from "@/components/DocumentMock";
 import DownloadPanel from "@/components/DownloadPanel";
-import SetupWizard, { type WizardStep } from "@/components/SetupWizard";
+import SetupWizard from "@/components/SetupWizard";
 import { PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getCurrentSession } from "@/lib/session/cookies";
 import type { SessionRecord } from "@/lib/session";
+import { maxReachableStep, resolveInitialSetupStep } from "@/lib/wizard/initialStep";
 import styles from "./page.module.css";
 
 interface HomeProps {
@@ -24,27 +25,6 @@ function formatPricePt(): string {
   }).format(euros);
 }
 
-/**
- * Where the wizard should open (DIO-37): the persisted step when it is still
- * reachable, otherwise the furthest step the record's actual state supports —
- * the record, not the persisted number, decides what counts as completed.
- */
-function resolveInitialStep(session: SessionRecord | null): WizardStep {
-  const maxReachable: WizardStep = !session?.upload
-    ? 1
-    : !session.specialtyId
-      ? 2
-      : !session.coverId
-        ? 3
-        : 4;
-
-  const stored = session?.setupStep;
-  if (typeof stored === "number" && Number.isInteger(stored) && stored >= 1 && stored < maxReachable) {
-    return stored as WizardStep;
-  }
-  return maxReachable;
-}
-
 export default async function Home({ searchParams }: HomeProps) {
   const { pagamento } = await searchParams;
   const priceLabelPt = formatPricePt();
@@ -57,6 +37,16 @@ export default async function Home({ searchParams }: HomeProps) {
   } catch {
     session = null;
   }
+
+  // The workspace (DIO-38) anchors DownloadPanel as its primary action once
+  // the payment is known — either from the record (webhook-fed) or from the
+  // Stripe success redirect, which can arrive before the webhook lands;
+  // DownloadPanel itself polls the record and never trusts the redirect.
+  const paid = pagamento === "sucesso" || session?.payment.status === "paid";
+  // Edge case: a success redirect whose session no longer reaches the
+  // workspace (e.g. lost cookie) still deserves the download/confirmation
+  // panel instead of silently restarting the wizard.
+  const orphanedSuccess = pagamento === "sucesso" && maxReachableStep(session) < 4;
 
   return (
     <div className={styles.page}>
@@ -120,18 +110,19 @@ export default async function Home({ searchParams }: HomeProps) {
               novamente.
             </p>
           )}
-          {pagamento === "sucesso" && (
+          {orphanedSuccess && (
             <div className={styles.downloadCard}>
               <DownloadPanel />
             </div>
           )}
 
           <SetupWizard
-            initialStep={resolveInitialStep(session)}
+            initialStep={resolveInitialSetupStep(session)}
             hasUpload={Boolean(session?.upload)}
             uploadFilename={session?.upload?.originalFilename}
             specialtyId={session?.specialtyId}
             coverId={session?.coverId}
+            paid={paid}
             priceLabelPt={priceLabelPt}
           />
         </section>

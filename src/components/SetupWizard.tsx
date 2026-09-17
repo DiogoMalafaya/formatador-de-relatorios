@@ -1,20 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import CheckoutButton from "./CheckoutButton";
+import type { WizardStep } from "@/lib/wizard/initialStep";
 import CoverSelect from "./CoverSelect";
-import FormattingSummary from "./FormattingSummary";
-import FormattingWarnings from "./FormattingWarnings";
-import PreviewPane from "./PreviewPane";
 import SpecialtySelect from "./SpecialtySelect";
 import UploadZone from "./UploadZone";
+import Workspace from "./Workspace";
 import styles from "./SetupWizard.module.css";
 
 /**
  * Guided setup wizard (DIO-37): one decision per screen — (1) upload,
- * (2) specialty, (3) cover — then a simple review view with the preview and
- * checkout. A proper two-pane workspace replaces the review view in DIO-38;
- * deliberately kept plain here.
+ * (2) specialty, (3) cover — then the two-pane workspace (DIO-38) with the
+ * preview, the rehomed summary/warnings/cover rail and the anchored
+ * checkout/download action.
  *
  * State model: the server session record is the source of truth. This
  * component receives the record's relevant fields as initial props (so a
@@ -23,9 +21,14 @@ import styles from "./SetupWizard.module.css";
  * before. Step changes are persisted fire-and-forget via
  * `/api/session/setup-step` — a failed persist must never block navigation,
  * it only costs the restore-on-refresh nicety.
+ *
+ * Jumping back into a step from the workspace goes through the same `goTo`
+ * as the stepper, so revisiting and returning keeps every choice: the
+ * decisions live in this component's state and in the session record, never
+ * in the step screens themselves.
  */
 
-export type WizardStep = 1 | 2 | 3 | 4;
+export type { WizardStep };
 
 interface SetupWizardProps {
   initialStep: WizardStep;
@@ -33,6 +36,12 @@ interface SetupWizardProps {
   uploadFilename?: string;
   specialtyId?: string;
   coverId?: string;
+  /**
+   * Payment state as the server rendered it (webhook-fed record, or the
+   * Stripe success redirect). Only chooses which primary action the
+   * workspace anchors — DownloadPanel re-verifies against the record.
+   */
+  paid: boolean;
   /** Formatted server-side from the pricing lib; see CheckoutButton. */
   priceLabelPt: string;
 }
@@ -60,6 +69,7 @@ export default function SetupWizard({
   uploadFilename,
   specialtyId: initialSpecialtyId,
   coverId: initialCoverId,
+  paid,
   priceLabelPt,
 }: SetupWizardProps) {
   const [step, setStep] = useState<WizardStep>(initialStep);
@@ -116,66 +126,69 @@ export default function SetupWizard({
         })}
       </ol>
 
-      <div className={styles.panel}>
-        {step === 1 && (
-          <div className={styles.stepBody}>
-            <h2 className={styles.stepTitle}>Carrega o teu currículo</h2>
-            <p className={styles.patientDataNotice}>
-              Antes de carregares: se o teu currículo mencionar doentes (por exemplo, na
-              casuística), remove ou anonimiza essa informação — não é necessária para a
-              formatação.
-            </p>
-            <UploadZone
-              initialFilename={filename}
-              onUploaded={(name) => {
-                setUploaded(true);
-                setFilename(name);
-              }}
-            />
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className={styles.stepBody}>
-            <h2 className={styles.stepTitle}>Escolhe a tua especialidade</h2>
-            <SpecialtySelect
-              initialSpecialtyId={specialtyId || undefined}
-              onSaved={setSpecialtyId}
-            />
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className={styles.stepBody}>
-            <h2 className={styles.stepTitle}>Escolhe a capa</h2>
-            <CoverSelect initialCoverId={coverId || undefined} onSaved={setCoverId} />
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className={styles.stepBody}>
-            <h2 className={styles.stepTitle}>Pré-visualiza e descarrega</h2>
-            <p className={styles.stepIntro}>
-              A pré-visualização é gratuita e tem marca de água. Se estiver tudo bem,
-              compra o download limpo — pagas uma única vez.
-            </p>
-            <FormattingSummary />
-            <FormattingWarnings />
-            <PreviewPane />
-            <CheckoutButton priceLabelPt={priceLabelPt} />
-          </div>
-        )}
-
-        <div className={styles.nav}>
-          {step > 1 ? (
-            <button type="button" className={styles.backButton} onClick={() => goTo((step - 1) as WizardStep)}>
-              Voltar
-            </button>
-          ) : (
-            <span />
+      {step === 4 ? (
+        // The workspace supplies its own frame (full-bleed two-pane layout,
+        // DIO-38) and its own way back into steps, so no panel and no nav.
+        <Workspace
+          uploadFilename={filename}
+          specialtyId={specialtyId}
+          coverId={coverId}
+          paid={paid}
+          priceLabelPt={priceLabelPt}
+          onCoverSaved={setCoverId}
+          onEditUpload={() => goTo(1)}
+          onEditSpecialty={() => goTo(2)}
+        />
+      ) : (
+        <div className={styles.panel}>
+          {step === 1 && (
+            <div className={styles.stepBody}>
+              <h2 className={styles.stepTitle}>Carrega o teu currículo</h2>
+              <p className={styles.patientDataNotice}>
+                Antes de carregares: se o teu currículo mencionar doentes (por exemplo, na
+                casuística), remove ou anonimiza essa informação — não é necessária para a
+                formatação.
+              </p>
+              <UploadZone
+                initialFilename={filename}
+                onUploaded={(name) => {
+                  setUploaded(true);
+                  setFilename(name);
+                }}
+              />
+            </div>
           )}
 
-          {step < 4 && (
+          {step === 2 && (
+            <div className={styles.stepBody}>
+              <h2 className={styles.stepTitle}>Escolhe a tua especialidade</h2>
+              <SpecialtySelect
+                initialSpecialtyId={specialtyId || undefined}
+                onSaved={setSpecialtyId}
+              />
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className={styles.stepBody}>
+              <h2 className={styles.stepTitle}>Escolhe a capa</h2>
+              <CoverSelect initialCoverId={coverId || undefined} onSaved={setCoverId} />
+            </div>
+          )}
+
+          <div className={styles.nav}>
+            {step > 1 ? (
+              <button
+                type="button"
+                className={styles.backButton}
+                onClick={() => goTo((step - 1) as WizardStep)}
+              >
+                Voltar
+              </button>
+            ) : (
+              <span />
+            )}
+
             <div className={styles.navForward}>
               {!stepComplete[step] && (
                 <span className={styles.navHint}>{validationHintPt[step]}</span>
@@ -189,9 +202,9 @@ export default function SetupWizard({
                 Continuar
               </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
