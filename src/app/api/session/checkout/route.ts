@@ -1,5 +1,6 @@
 import { updateSession } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
+import { getOrderedSources } from "@/lib/session/sources";
 import { CURRENCY, PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getStripeClient } from "@/lib/stripe";
 import { SESSION_EXPIRED_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!session.upload) {
+  if (getOrderedSources(session).length === 0) {
     return Response.json(
       { ok: false, errorMessagePt: UPLOAD_REQUIRED_PT },
       { status: 409 },

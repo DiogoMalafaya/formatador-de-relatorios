@@ -135,6 +135,22 @@ describe("FirebaseObjectStore", () => {
       assert.equal(bucket.files.has("expired"), false);
       assert.equal(bucket.files.has("live"), true);
     });
+
+    test("every multi-file source key is covered by the purge regime (DIO-40, never-cut)", async () => {
+      // The sweep lists the whole bucket and keys off the expiresAt metadata
+      // stamped at put time — no key-pattern list to keep in sync with the
+      // `source/{index}.docx` layout, so nothing a session stores escapes it.
+      const keys = ["s/source/0.docx", "s/source/1.docx", "s/source/7.docx"];
+      for (const key of keys) {
+        await store.put(key, Buffer.from("x"), "application/octet-stream");
+        bucket.files.get(key)!.metadata.metadata!.expiresAt = String(Date.now() - 1);
+      }
+
+      assert.equal(await store.purgeExpired(), keys.length);
+      for (const key of keys) {
+        assert.equal(bucket.files.has(key), false);
+      }
+    });
   });
 
   describe("getSignedUrl", () => {

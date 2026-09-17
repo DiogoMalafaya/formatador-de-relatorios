@@ -21,6 +21,26 @@ export interface UploadRef {
   sizeBytes: number;
 }
 
+/**
+ * One uploaded source document of a multi-file CV (DIO-40).
+ *
+ * A CV is assembled from a *documento principal* (cover/dedication/front
+ * matter) plus N chapter files. Each upload gets a stable `index` — a
+ * monotonically increasing counter baked into the storage key
+ * (`{sessionId}/source/{index}.docx`) — that never changes afterwards.
+ * Chapter *order* is the array order of `SessionRecord.sources`, so
+ * reordering permutes the array and never renames stored objects.
+ */
+export interface SourceFileRef {
+  /** Stable upload-sequence number; also appears in `storageKey`. Not the chapter order. */
+  index: number;
+  /** Object-storage key: `{sessionId}/source/{index}.docx` (DIO-6). */
+  storageKey: string;
+  /** Original filename, shown back to the student in the wizard only. */
+  originalFilename: string;
+  sizeBytes: number;
+}
+
 export interface RenderedArtifacts {
   /** Watermarked preview, servable before payment (DIO-13). */
   previewStorageKey?: string;
@@ -34,7 +54,28 @@ export interface SessionRecord {
   /** Epoch ms. Matches the retention window enforced on the files themselves. */
   expiresAt: number;
 
+  /**
+   * @deprecated Single-file predecessor of `sources` (DIO-40). No longer
+   * written; still read as a fallback by `getOrderedSources` so anything
+   * created before the multi-file cutover keeps working for the rest of its
+   * (short) life. Remove once nothing constructs it any more.
+   */
   upload?: UploadRef;
+  /**
+   * Uploaded source documents, in chapter order (DIO-40). Array order *is*
+   * the order the merge pipeline consumes; it lives here, server-side, and is
+   * never client-asserted at render time. Read through
+   * `src/lib/session/sources.ts` rather than directly — the helper also
+   * covers the legacy `upload` shape.
+   */
+  sources?: SourceFileRef[];
+  /**
+   * Stable `SourceFileRef.index` of the documento principal — *not* a
+   * position in the `sources` array, so reordering chapters never silently
+   * changes which file supplies the front matter. A single uploaded file is
+   * automatically the master (the degenerate case is today's behaviour).
+   */
+  masterIndex?: number;
   /** Specialty id from the config in DIO-9. */
   specialtyId?: string;
   /** Cover template id from DIO-12. */

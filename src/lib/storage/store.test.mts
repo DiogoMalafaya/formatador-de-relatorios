@@ -90,6 +90,38 @@ describe("InMemoryObjectStore", () => {
       assert.equal(store.size, 1);
       assert.notEqual(await store.get("live"), null);
     });
+
+    test("every multi-file source key is covered by the purge regime (DIO-40, never-cut)", async () => {
+      // Uploads may contain patient data. Purging sweeps by the expiresAt
+      // stamped at put time, never by key pattern, so all of a session's
+      // `source/{index}.docx` objects — contiguous or not, after removals —
+      // fall to the same clock as everything else it stores.
+      const keys = [
+        "session-a/source/0.docx",
+        "session-a/source/1.docx",
+        "session-a/source/7.docx",
+        "session-a/preview.pdf",
+      ];
+      for (const key of keys) {
+        await store.put(key, Buffer.from("x"), "application/octet-stream");
+        (store as unknown as { objects: Map<string, { expiresAt: number }> }).objects.get(key)!.expiresAt =
+          Date.now() - 1;
+      }
+
+      assert.equal(await store.purgeExpired(), keys.length);
+      assert.equal(store.size, 0);
+      for (const key of keys) {
+        assert.equal(await store.get(key), null);
+      }
+    });
+
+    test("a source object is stamped with an expiry at put time", async () => {
+      // The stamp is what both the in-memory sweep and the Firebase
+      // metadata-driven sweep key off — an object without one would be
+      // invisible to the purge.
+      const meta = await store.put("session-a/source/0.docx", Buffer.from("x"), "application/zip");
+      assert.ok(meta.expiresAt > meta.createdAt);
+    });
   });
 
   describe("getSignedUrl", () => {
