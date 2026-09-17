@@ -12,7 +12,9 @@ export type FormattingWarningCode =
   | "image-detected"
   | "unsupported-structure"
   | "table-present"
-  | "page-limit-possibly-exceeded";
+  | "page-limit-possibly-exceeded"
+  /** Emitted by the merge engine (`src/lib/merge/warnings.ts`, DIO-41). */
+  | "stale-toc-replaced";
 
 export interface FormattingWarning {
   code: FormattingWarningCode;
