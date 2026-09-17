@@ -1,0 +1,197 @@
+"use client";
+
+import { useState } from "react";
+import CheckoutButton from "./CheckoutButton";
+import CoverSelect from "./CoverSelect";
+import FormattingSummary from "./FormattingSummary";
+import FormattingWarnings from "./FormattingWarnings";
+import PreviewPane from "./PreviewPane";
+import SpecialtySelect from "./SpecialtySelect";
+import UploadZone from "./UploadZone";
+import styles from "./SetupWizard.module.css";
+
+/**
+ * Guided setup wizard (DIO-37): one decision per screen — (1) upload,
+ * (2) specialty, (3) cover — then a simple review view with the preview and
+ * checkout. A proper two-pane workspace replaces the review view in DIO-38;
+ * deliberately kept plain here.
+ *
+ * State model: the server session record is the source of truth. This
+ * component receives the record's relevant fields as initial props (so a
+ * refresh restores progress) and mirrors completion locally as the student
+ * moves; each step's own component still saves to its API route exactly as
+ * before. Step changes are persisted fire-and-forget via
+ * `/api/session/setup-step` — a failed persist must never block navigation,
+ * it only costs the restore-on-refresh nicety.
+ */
+
+export type WizardStep = 1 | 2 | 3 | 4;
+
+interface SetupWizardProps {
+  initialStep: WizardStep;
+  hasUpload: boolean;
+  uploadFilename?: string;
+  specialtyId?: string;
+  coverId?: string;
+  /** Formatted server-side from the pricing lib; see CheckoutButton. */
+  priceLabelPt: string;
+}
+
+const STEPS: Array<{ step: WizardStep; labelPt: string }> = [
+  { step: 1, labelPt: "Currículo" },
+  { step: 2, labelPt: "Especialidade" },
+  { step: 3, labelPt: "Capa" },
+  { step: 4, labelPt: "Pré-visualização" },
+];
+
+function persistStep(step: WizardStep) {
+  // Fire-and-forget: before the first upload there is no session to write to,
+  // and losing the persisted step only means a refresh starts a step earlier.
+  void fetch("/api/session/setup-step", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ step }),
+  }).catch(() => {});
+}
+
+export default function SetupWizard({
+  initialStep,
+  hasUpload,
+  uploadFilename,
+  specialtyId: initialSpecialtyId,
+  coverId: initialCoverId,
+  priceLabelPt,
+}: SetupWizardProps) {
+  const [step, setStep] = useState<WizardStep>(initialStep);
+  const [uploaded, setUploaded] = useState(hasUpload);
+  const [filename, setFilename] = useState(uploadFilename);
+  const [specialtyId, setSpecialtyId] = useState(initialSpecialtyId ?? "");
+  const [coverId, setCoverId] = useState(initialCoverId ?? "");
+
+  // Furthest step the student may jump to: every earlier decision must exist.
+  const maxReachable: WizardStep = !uploaded ? 1 : !specialtyId ? 2 : !coverId ? 3 : 4;
+
+  const stepComplete: Record<WizardStep, boolean> = {
+    1: uploaded,
+    2: specialtyId !== "",
+    3: coverId !== "",
+    4: false,
+  };
+
+  function goTo(next: WizardStep) {
+    if (next > maxReachable) return;
+    setStep(next);
+    persistStep(next);
+  }
+
+  const validationHintPt: Record<WizardStep, string> = {
+    1: "Carrega o teu currículo para continuar.",
+    2: "Escolhe a tua especialidade para continuar.",
+    3: "Escolhe uma capa para veres a pré-visualização.",
+    4: "",
+  };
+
+  return (
+    <section className={styles.wizard} aria-label="Preparar o currículo">
+      <ol className={styles.stepper}>
+        {STEPS.map(({ step: n, labelPt }) => {
+          const state = n === step ? "current" : stepComplete[n] ? "complete" : "upcoming";
+          const reachable = n <= maxReachable;
+          return (
+            <li key={n} className={styles.stepperItem} data-state={state}>
+              <button
+                type="button"
+                className={styles.stepperButton}
+                onClick={() => goTo(n)}
+                disabled={!reachable}
+                aria-current={n === step ? "step" : undefined}
+              >
+                <span className={styles.stepperIndex} aria-hidden="true">
+                  {state === "complete" ? "✓" : n}
+                </span>
+                <span className={styles.stepperLabel}>{labelPt}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className={styles.panel}>
+        {step === 1 && (
+          <div className={styles.stepBody}>
+            <h2 className={styles.stepTitle}>Carrega o teu currículo</h2>
+            <p className={styles.patientDataNotice}>
+              Antes de carregares: se o teu currículo mencionar doentes (por exemplo, na
+              casuística), remove ou anonimiza essa informação — não é necessária para a
+              formatação.
+            </p>
+            <UploadZone
+              initialFilename={filename}
+              onUploaded={(name) => {
+                setUploaded(true);
+                setFilename(name);
+              }}
+            />
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className={styles.stepBody}>
+            <h2 className={styles.stepTitle}>Escolhe a tua especialidade</h2>
+            <SpecialtySelect
+              initialSpecialtyId={specialtyId || undefined}
+              onSaved={setSpecialtyId}
+            />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className={styles.stepBody}>
+            <h2 className={styles.stepTitle}>Escolhe a capa</h2>
+            <CoverSelect initialCoverId={coverId || undefined} onSaved={setCoverId} />
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className={styles.stepBody}>
+            <h2 className={styles.stepTitle}>Pré-visualiza e descarrega</h2>
+            <p className={styles.stepIntro}>
+              A pré-visualização é gratuita e tem marca de água. Se estiver tudo bem,
+              compra o download limpo — pagas uma única vez.
+            </p>
+            <FormattingSummary />
+            <FormattingWarnings />
+            <PreviewPane />
+            <CheckoutButton priceLabelPt={priceLabelPt} />
+          </div>
+        )}
+
+        <div className={styles.nav}>
+          {step > 1 ? (
+            <button type="button" className={styles.backButton} onClick={() => goTo((step - 1) as WizardStep)}>
+              Voltar
+            </button>
+          ) : (
+            <span />
+          )}
+
+          {step < 4 && (
+            <div className={styles.navForward}>
+              {!stepComplete[step] && (
+                <span className={styles.navHint}>{validationHintPt[step]}</span>
+              )}
+              <button
+                type="button"
+                className={styles.nextButton}
+                onClick={() => goTo((step + 1) as WizardStep)}
+                disabled={!stepComplete[step]}
+              >
+                Continuar
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

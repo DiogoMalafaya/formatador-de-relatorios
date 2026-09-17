@@ -1,0 +1,103 @@
+.stack {
+  position: relative;
+  width: min(280px, 70vw);
+  aspect-ratio: 210 / 297;
+  margin-right: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12% 11%;
+  background-color: var(--color-page-white); /* the document itself is norm-white, not a themed surface */
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  box-shadow: var(--shadow-sheet);
+}
+
+/* Body page peeks out from behind the cover. */
+.bodySheet {
+  gap: 5.5%;
+  transform: translate(9%, 9%) rotate(1.6deg);
+}
+
+.coverSheet {
+  align-items: center;
+  justify-content: center;
+  gap: 6%;
+  text-align: center;
+}
+
+/* Placeholder text lines — ink-toned bars, no real content. */
+.line {
+  display: block;
+  height: 3.2%;
+  background-color: var(--color-surface-sunken);
+  border-radius: 2px;
+}
+
+.lineHeading {
+  width: 55%;
+  height: 4%;
+  background-color: var(--color-border-strong);
+}
+
+.sheetFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.footerName {
+  display: block;
+  width: 34%;
+  height: 2.4%;
+  min-height: 3px;
+  background-color: var(--color-border-strong);
+  border-radius: 2px;
+}
+
+.footerPage {
+  display: block;
+  width: 7%;
+  height: 2.4%;
+  min-height: 3px;
+  background-color: var(--color-border-strong);
+  border-radius: 2px;
+}
+
+.coverName {
+  display: block;
+  width: 58%;
+  height: 3.4%;
+  background-color: var(--color-ink);
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+.coverTitle {
+  font-family: var(--font-display);
+  font-size: clamp(0.9rem, 2.2vw, 1.2rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.coverRule {
+  display: block;
+  width: 18%;
+  height: 2px;
+  background-color: var(--color-accent);
+}
+
+.coverDetail {
+  display: block;
+  width: 44%;
+  height: 2.6%;
+  background-color: var(--color-surface-sunken);
+  border-radius: 2px;
+}

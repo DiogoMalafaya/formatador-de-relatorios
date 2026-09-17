@@ -1,0 +1,189 @@
+.wizard {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* --- Stepper --- */
+
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.stepperItem {
+  display: flex;
+}
+
+.stepperButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.stepperButton:disabled {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+  cursor: default;
+}
+
+.stepperItem[data-state="current"] .stepperButton {
+  color: var(--color-ink);
+  background-color: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+.stepperIndex {
+  display: inline-flex;
+  width: 1.625rem;
+  height: 1.625rem;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.stepperItem[data-state="current"] .stepperIndex {
+  color: var(--color-on-accent);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.stepperItem[data-state="complete"] .stepperIndex {
+  color: var(--color-success);
+  background-color: var(--color-success-wash);
+  border-color: var(--color-success);
+}
+
+/* --- Step panel --- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stepTitle {
+  font-size: var(--text-xl);
+}
+
+.stepIntro {
+  max-width: 60ch;
+  font-size: var(--text-sm);
+  color: var(--color-ink-soft);
+}
+
+.patientDataNotice {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-warn-ink);
+  background-color: var(--color-warn-wash);
+  border: 1px solid var(--color-warn-border);
+  border-radius: var(--radius-md);
+}
+
+/* --- Navigation --- */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.navForward {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.navHint {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+.nextButton {
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-on-accent);
+  cursor: pointer;
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+
+.nextButton:hover:not(:disabled) {
+  background-color: var(--color-accent-strong);
+}
+
+.nextButton:disabled {
+  cursor: default;
+  color: var(--color-ink-muted);
+  background-color: var(--color-surface-sunken);
+}
+
+.backButton {
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+
+.backButton:hover {
+  background-color: var(--color-surface-sunken);
+}
+
+@media (max-width: 600px) {
+  .panel {
+    padding: var(--space-4);
+  }
+
+  .stepperLabel {
+    display: none;
+  }
+
+  .stepperItem[data-state="current"] .stepperLabel {
+    display: inline;
+  }
+}
