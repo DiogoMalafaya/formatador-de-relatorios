@@ -14,11 +14,33 @@ export type FormattingWarningCode =
   | "table-present"
   | "page-limit-possibly-exceeded"
   /** Emitted by the merge engine (`src/lib/merge/warnings.ts`, DIO-41). */
-  | "stale-toc-replaced";
+  | "stale-toc-replaced"
+  /** Exact-count variants, emitted by the two-pass render (DIO-42) once a real page map exists. */
+  | "page-limit-exceeded"
+  | "resumo-too-long";
 
 export interface FormattingWarning {
   code: FormattingWarningCode;
   messagePt: string;
+  /**
+   * Original filename of the source document this finding came from (DIO-42,
+   * US10). Only set for multi-file sessions, where "which file" is a real
+   * question; single-file warnings stay unattributed, as before.
+   */
+  sourceFilename?: string;
+}
+
+/**
+ * Attributes a warning to the source file it was found in (DIO-42, US10):
+ * sets `sourceFilename` and prefixes the pt-PT copy so the attribution shows
+ * even in a UI that only prints `messagePt`.
+ */
+export function withSourceFilename(warning: FormattingWarning, filename: string): FormattingWarning {
+  return {
+    ...warning,
+    sourceFilename: filename,
+    messagePt: `Em «${filename}»: ${warning.messagePt}`,
+  };
 }
 
 export function imageDetectedWarning(count: number): FormattingWarning {
@@ -52,5 +74,21 @@ export function pageLimitPossiblyExceededWarning(estimatedPages: number, maxPage
   return {
     code: "page-limit-possibly-exceeded",
     messagePt: `O documento poderá exceder o limite de ${maxPages} páginas (estimativa: ~${estimatedPages}). Esta é uma estimativa — a contagem definitiva é feita ao gerar o PDF.`,
+  };
+}
+
+/** Exact-count successor of the estimate above — the two-pass render knows the real page count (DIO-42). */
+export function pageLimitExceededWarning(pages: number, maxPages: number): FormattingWarning {
+  return {
+    code: "page-limit-exceeded",
+    messagePt: `O documento final tem ${pages} páginas — a norma permite no máximo ${maxPages}. Encurta o conteúdo antes de o entregares.`,
+  };
+}
+
+/** The norms cap the "Resumo do currículo" at `maxPages` (2 in every rule set seen so far). */
+export function resumoTooLongWarning(pages: number, maxPages: number): FormattingWarning {
+  return {
+    code: "resumo-too-long",
+    messagePt: `O resumo do currículo ocupa ${pages} páginas — a norma permite no máximo ${maxPages}. Encurta essa secção antes de entregares.`,
   };
 }

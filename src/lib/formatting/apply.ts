@@ -6,9 +6,16 @@
  * impose as a warning rather than silently dropping or rejecting content —
  * see the DIO-10 comment thread's "warn, do not strip" recommendation on
  * images, extended here to every other constraint.
+ *
+ * DIO-42 split the buffer path in two so the merge pipeline can reuse it:
+ * `applyFormatting` (parse + format, the original single-file entry point)
+ * and `formatParsedDocument` (format an already-parsed document — the merged
+ * multi-file model, whose constraint warnings were already collected per
+ * source file for attribution).
  */
 
 import { parseDocxDocument } from "./parseDocx.ts";
+import type { ParsedDocument } from "./parseDocx.ts";
 import { extractCandidateName } from "./extractName.ts";
 import { getRuleSet } from "./ruleSet.ts";
 import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
@@ -38,14 +45,13 @@ export interface FormattedDocument {
   extractedCandidateName?: string;
 }
 
-export async function applyFormatting(
-  buffer: Buffer,
-  options: ApplyFormattingOptions,
-): Promise<FormattedDocument> {
-  const ruleSet = getRuleSet(options.ruleSetId);
-  const choices = resolveChoices(ruleSet, options);
-
-  const parsed = await parseDocxDocument(buffer);
+/**
+ * The per-document constraint findings (forbidden images, restricted tables,
+ * unsupported structures). Exposed separately so the multi-file pipeline
+ * (DIO-42) can collect them per source *before* merging and attribute each
+ * one to its original filename.
+ */
+export function collectConstraintWarnings(parsed: ParsedDocument, ruleSet: RuleSet): FormattingWarning[] {
   const warnings: FormattingWarning[] = [];
 
   if (ruleSet.constraints.imagesForbidden && parsed.imageCount > 0) {
@@ -59,6 +65,35 @@ export async function applyFormatting(
   for (const structure of parsed.unsupportedStructures) {
     warnings.push(unsupportedStructureWarning(structure));
   }
+
+  return warnings;
+}
+
+export interface FormatParsedOverrides {
+  /**
+   * Pre-collected constraint warnings to use instead of computing them over
+   * `parsed` — the merge pipeline collects them per source file (with
+   * filename attribution) and must not double-count them over the merged
+   * document.
+   */
+  constraintWarnings?: FormattingWarning[];
+  /** Appended after the constraint warnings — merge-engine findings (stale TOC, …). */
+  extraWarnings?: FormattingWarning[];
+}
+
+/** Rule-set formatting over an already-parsed document. See module docs for why this exists apart from `applyFormatting`. */
+export function formatParsedDocument(
+  parsed: ParsedDocument,
+  options: ApplyFormattingOptions,
+  overrides: FormatParsedOverrides = {},
+): FormattedDocument {
+  const ruleSet = getRuleSet(options.ruleSetId);
+  const choices = resolveChoices(ruleSet, options);
+
+  const warnings: FormattingWarning[] = [
+    ...(overrides.constraintWarnings ?? collectConstraintWarnings(parsed, ruleSet)),
+    ...(overrides.extraWarnings ?? []),
+  ];
 
   if (ruleSet.constraints.maxPages !== undefined) {
     const estimatedPages = estimatePageCount(parsed.wordCount, ruleSet);
@@ -74,4 +109,11 @@ export async function applyFormatting(
     ruleSet,
     extractedCandidateName: extractCandidateName(parsed),
   };
+}
+
+export async function applyFormatting(
+  buffer: Buffer,
+  options: ApplyFormattingOptions,
+): Promise<FormattedDocument> {
+  return formatParsedDocument(await parseDocxDocument(buffer), options);
 }

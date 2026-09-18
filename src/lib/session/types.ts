@@ -46,6 +46,18 @@ export interface RenderedArtifacts {
   previewStorageKey?: string;
   /** Clean PDF. Never served while payment.status is "unpaid" (DIO-15). */
   finalStorageKey?: string;
+  /**
+   * Exact-count validations from the last paginated render (DIO-42): the
+   * 80-page and resumo checks that only exist once a real page map does. The
+   * warnings route serves these alongside the parse-time warnings and drops
+   * the page-count *estimate* when an exact count is available. Re-written on
+   * every preview render, cleared when the last render wasn't paginated —
+   * never older than the newest preview. Codes + pt-PT copy only, never
+   * document content.
+   */
+  renderWarnings?: { code: string; messagePt: string; sourceFilename?: string }[];
+  /** Exact page count of the last paginated render (DIO-42). */
+  renderedPageCount?: number;
 }
 
 export interface SessionRecord {

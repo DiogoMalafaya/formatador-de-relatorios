@@ -62,6 +62,8 @@ export interface RuleSet {
     /** Tables are allowed, but only for this kind of content — flagged, not blocked (open question, DIO-10). */
     tablesRestrictedToActivitySchematization: boolean;
     maxPages?: number;
+    /** Page cap on the "Resumo do currículo" section, validated on the rendered page map (DIO-42). */
+    resumoMaxPages?: number;
   };
 }
 
@@ -100,6 +102,7 @@ const MFR_PARAMETERS: Omit<RuleSet, "id" | "name"> = {
     imagesForbidden: true,
     tablesRestrictedToActivitySchematization: true,
     maxPages: 80,
+    resumoMaxPages: 2,
   },
 };
 
