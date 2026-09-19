@@ -1,7 +1,9 @@
 .summary {
-  margin: 0;
   max-width: 70ch;
-  font-size: var(--text-sm);
-  color: var(--color-ink-soft);
+  padding: var(--space-4);
+  font: var(--type-body-sm);
+  color: var(--sage-900);
+  background-color: var(--sage-100);
+  border-radius: var(--radius-md);
   overflow-wrap: break-word;
 }

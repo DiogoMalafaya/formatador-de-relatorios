@@ -1,5 +1,6 @@
-import DocumentMock from "@/components/DocumentMock";
 import DownloadPanel from "@/components/DownloadPanel";
+import HeroRenders from "@/components/HeroRenders";
+import Icon from "@/components/Icon";
 import SetupWizard from "@/components/SetupWizard";
 import { PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getCurrentSession } from "@/lib/session/cookies";
@@ -50,62 +51,115 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <div className={styles.page}>
-      <header className={styles.masthead}>
-        <span className={styles.brand}>Formatador de Relatórios</span>
-      </header>
+      <div className={styles.shell}>
+        <header className={styles.navbar}>
+          <a href="#" className={styles.wordmark} aria-label="Lauda — início">
+            lauda
+          </a>
+          <nav className={styles.navLinks} aria-label="Secções">
+            <a href="#" className={styles.navLinkActive} aria-current="page">
+              Início
+            </a>
+            <a href="#como-funciona" className={styles.navLink}>
+              Como funciona
+            </a>
+            <a href="#preco" className={styles.navLink}>
+              Preço
+            </a>
+          </nav>
+          <a className={styles.navCta} href="#preparar">
+            Começar
+          </a>
+        </header>
 
-      <main className={styles.main}>
         <section className={styles.hero} aria-label="Apresentação">
+          <HeroRenders />
+
           <div className={styles.heroText}>
-            <p className={styles.eyebrow}>Para internos de formação especializada</p>
+            <span className={styles.heroBadge}>
+              <Icon name="sparkles" size={12} /> Pré-visualização gratuita
+              <Icon name="chevronRight" size={12} />
+            </span>
             <h1 className={styles.heroTitle}>
-              O teu currículo, formatado segundo as normas do Colégio.
+              O teu currículo, formatado segundo as{" "}
+              <em className={styles.heroAccent}>normas</em> do Colégio.
             </h1>
             <p className={styles.heroLead}>
               Carrega o teu currículo em .docx e recebe um PDF pronto para a discussão
               curricular — tipografia, margens, rodapé e capa conforme as normas da tua
               especialidade.
             </p>
-            <a className={styles.heroCta} href="#preparar">
-              Começar agora
-            </a>
+            <div className={styles.heroActions}>
+              <a className={styles.heroCta} href="#preparar">
+                Começar agora
+              </a>
+              <a className={styles.heroGhost} href="#como-funciona">
+                Como funciona <Icon name="chevronRight" size={14} />
+              </a>
+            </div>
           </div>
-          <div className={styles.heroVisual}>
-            <DocumentMock />
+
+        </section>
+      </div>
+
+      <main className={styles.main}>
+        <section id="como-funciona" className={styles.beats} aria-labelledby="beats-title">
+          <header className={styles.sectionHeader}>
+            <p className={styles.eyebrow}>Como funciona</p>
+            <h2 id="beats-title" className={styles.sectionTitle}>
+              Carregas, revês e descarregas.
+            </h2>
+          </header>
+
+          <div className={styles.beatGrid}>
+            <article className={styles.beat}>
+              <span className={styles.beatIcon}>
+                <Icon name="sparkles" size={18} />
+              </span>
+              <h3 className={styles.beatTitle}>O que faz</h3>
+              <p className={styles.beatText}>
+                Aplica as normas do Colégio ao teu documento: tipo de letra, corpo 12,
+                espaçamento 1,5, margens de 2,5 cm, rodapé com o teu nome e número de
+                página — e uma capa conforme.
+              </p>
+            </article>
+            <article className={styles.beat}>
+              <span className={styles.beatIcon}>
+                <Icon name="graduationCap" size={18} />
+              </span>
+              <h3 className={styles.beatTitle}>Para quem</h3>
+              <p className={styles.beatText}>
+                Para internos em fim de internato a preparar a Prova de Discussão
+                Curricular. Sem conta, sem instalação: carregas, revês e descarregas.
+              </p>
+            </article>
+            <article id="preco" className={`${styles.beat} ${styles.beatPriceCard}`}>
+              <span className={styles.beatIcon}>
+                <Icon name="euro" size={18} />
+              </span>
+              <h3 className={styles.beatTitle}>Quanto custa</h3>
+              <p className={styles.beatPrice}>
+                {priceLabelPt}
+                <span className={styles.beatPriceNote}>pagamento único</span>
+              </p>
+              <p className={styles.beatText}>
+                A pré-visualização é gratuita, com marca de água. Pagas uma única vez pelo
+                PDF final, sem marca de água.
+              </p>
+            </article>
           </div>
         </section>
 
-        <section className={styles.beats} aria-label="Como funciona">
-          <div className={styles.beat}>
-            <h2 className={styles.beatTitle}>O que faz</h2>
-            <p className={styles.beatText}>
-              Aplica as normas do Colégio ao teu documento: tipo de letra, corpo 12,
-              espaçamento 1,5, margens de 2,5 cm, rodapé com o teu nome e número de
-              página — e uma capa conforme.
-            </p>
-          </div>
-          <div className={styles.beat}>
-            <h2 className={styles.beatTitle}>Para quem</h2>
-            <p className={styles.beatText}>
-              Para internos em fim de internato a preparar a Prova de Discussão
-              Curricular. Sem conta, sem instalação: carregas, revês e descarregas.
-            </p>
-          </div>
-          <div className={styles.beat}>
-            <h2 className={styles.beatTitle}>Quanto custa</h2>
-            <p className={styles.beatPrice}>{priceLabelPt}</p>
-            <p className={styles.beatText}>
-              A pré-visualização é gratuita, com marca de água. Pagas uma única vez pelo
-              PDF final, sem marca de água.
-            </p>
-          </div>
-        </section>
-
-        <section id="preparar" className={styles.setup} aria-label="Preparar o currículo">
-          <h2 className={styles.setupTitle}>Prepara o teu currículo</h2>
+        <section id="preparar" className={styles.setup} aria-labelledby="setup-title">
+          <header className={styles.sectionHeader}>
+            <p className={styles.eyebrow}>Começar</p>
+            <h2 id="setup-title" className={styles.sectionTitle}>
+              Prepara o teu currículo
+            </h2>
+          </header>
 
           {pagamento === "cancelado" && (
-            <p className={styles.paymentNotice}>
+            <p className={styles.paymentNotice} role="status">
               Pagamento cancelado. O teu currículo continua disponível — podes tentar
               novamente.
             </p>

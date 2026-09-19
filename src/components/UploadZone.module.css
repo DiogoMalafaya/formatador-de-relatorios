@@ -8,32 +8,43 @@
 .zone {
   display: flex;
   width: 100%;
-  min-height: 160px;
+  min-height: 200px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-5);
+  padding: var(--space-8) var(--space-6);
   text-align: center;
   cursor: pointer;
-  background-color: var(--color-paper);
-  border: 2px dashed var(--color-border-strong);
+  background-color: var(--surface-page);
+  border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius-lg);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .zone:hover {
-  border-color: var(--color-accent);
-}
-
-.zone:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  background-color: var(--sage-50);
+  border-color: var(--sage-700);
 }
 
 .zoneDragOver {
-  border-color: var(--color-accent);
-  background-color: var(--color-accent-wash);
+  background-color: var(--sage-100);
+  border-color: var(--sage-700);
+  border-style: solid;
+}
+
+.zoneIcon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+  color: var(--sage-700);
+  background-color: var(--sage-100);
+  border-radius: var(--radius-full);
 }
 
 .hiddenInput {
@@ -46,40 +57,30 @@
 }
 
 .zoneTitle {
-  margin: 0;
   max-width: 42ch;
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-ink);
+  font: var(--type-heading-sm);
+  color: var(--ink-900);
 }
 
 .zoneHint {
-  margin: 0;
-  font-size: var(--text-xs);
-  color: var(--color-ink-muted);
-}
-
-.statusInfo,
-.statusError,
-.statusSuccess {
-  margin: 0;
-  font-size: var(--text-sm);
+  font: var(--type-body-sm);
+  color: var(--ink-600);
 }
 
 .statusInfo {
-  color: var(--color-ink-soft);
+  composes: statusInfo from "../styles/controls.module.css";
 }
 
 .statusError {
-  color: var(--color-danger);
+  composes: statusError from "../styles/controls.module.css";
 }
 
 .statusSuccess {
-  color: var(--color-success);
+  composes: statusSuccess from "../styles/controls.module.css";
 }
 
 @media (max-width: 600px) {
   .zone {
-    padding: var(--space-4);
+    padding: var(--space-6) var(--space-4);
   }
 }
