@@ -1,56 +1,81 @@
 .page {
   display: flex;
   flex: 1;
-  min-height: 100vh;
   flex-direction: column;
   align-items: center;
+  padding: var(--space-6) var(--space-6) 0;
 }
 
 .main {
   display: flex;
   width: 100%;
-  max-width: 760px;
+  max-width: 800px;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-4);
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-10) var(--space-12) var(--space-12);
+  margin-bottom: var(--space-16);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
 }
 
 .main h1 {
-  font-size: var(--text-2xl);
+  margin-bottom: var(--space-2);
+  font: var(--type-display-md);
+  letter-spacing: -0.03em;
 }
 
 .main h2 {
-  margin-top: var(--space-2);
-  font-size: var(--text-lg);
+  margin-top: var(--space-4);
+  font: var(--type-heading-md);
 }
 
 .main p,
 .main li {
   max-width: 65ch;
-  font-size: var(--text-base);
-  color: var(--color-ink-soft);
+  font: var(--type-body);
+  color: var(--ink-700);
 }
 
 .main ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   padding-left: var(--space-5);
-  margin: 0;
+}
+
+.main a:not(.back) {
+  color: var(--sage-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .back {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-ink-muted);
-  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  font: var(--type-label);
+  color: var(--sage-700);
+  background-color: var(--sage-100);
+  border-radius: var(--radius-full);
+  transition: background-color 0.15s ease;
 }
 
 .back:hover {
-  color: var(--color-ink);
-  text-decoration: underline;
+  background-color: var(--sage-300);
 }
 
 @media (max-width: 600px) {
+  .page {
+    padding: var(--space-3) var(--space-3) 0;
+  }
+
   .main {
-    padding: var(--space-6) var(--space-4) var(--space-7);
+    padding: var(--space-6) var(--space-5) var(--space-8);
+    border-radius: var(--radius-lg);
   }
 }

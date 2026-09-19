@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Icon from "./Icon";
 import styles from "./CheckoutButton.module.css";
 
 /**
@@ -60,6 +61,7 @@ export default function CheckoutButton({ priceLabelPt }: CheckoutButtonProps) {
         onClick={() => void startCheckout()}
         disabled={status === "loading"}
       >
+        <Icon name="lock" />
         {status === "loading"
           ? "A abrir o pagamento…"
           : `Comprar download sem marca de água — ${priceLabelPt}`}

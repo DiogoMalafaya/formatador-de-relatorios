@@ -1,0 +1,111 @@
+/**
+ * Shared Lauda controls, pulled into component modules with `composes` so
+ * every button and status line in the app is the same pill and the same
+ * colour — never re-declared per component.
+ *
+ * Buttons (Lauda "Button"): all pill-shaped. Primary for the one action per
+ * screen that matters most; Secondary for everything else on a light
+ * surface; Ghost only on the sage gradient.
+ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  font: var(--type-label);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+}
+
+.primary {
+  composes: button;
+  color: var(--on-brand);
+  background-color: var(--sage-700);
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--sage-900);
+}
+
+/* Lauda: a disabled Primary swaps to sage-300 — never opacity alone. */
+.primary:disabled {
+  background-color: var(--sage-300);
+}
+
+.secondary {
+  composes: button;
+  color: var(--sage-700);
+  background-color: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--sage-100);
+}
+
+.secondary:disabled {
+  color: var(--ink-600);
+  background-color: var(--surface-sunken);
+  border-color: var(--border);
+}
+
+.ghost {
+  composes: button;
+  color: var(--on-brand);
+  background-color: var(--white-glass);
+  border-color: var(--white-glass-border);
+  backdrop-filter: blur(8px);
+}
+
+.ghost:hover {
+  background-color: var(--white-glass-border);
+}
+
+/* Inline status lines (DIO-18 copy, restyled). */
+
+.status {
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+.statusInfo {
+  composes: status;
+  color: var(--ink-700);
+}
+
+.statusSuccess {
+  composes: status;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.statusError {
+  composes: status;
+  color: var(--danger);
+}
+
+/* Field label above a control. */
+.fieldLabel {
+  font: var(--type-label);
+  font-weight: 600;
+  color: var(--ink-900);
+}

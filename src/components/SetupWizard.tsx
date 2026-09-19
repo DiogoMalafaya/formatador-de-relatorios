@@ -5,6 +5,7 @@ import CheckoutButton from "./CheckoutButton";
 import CoverSelect from "./CoverSelect";
 import FormattingSummary from "./FormattingSummary";
 import FormattingWarnings from "./FormattingWarnings";
+import Icon from "./Icon";
 import PreviewPane from "./PreviewPane";
 import SpecialtySelect from "./SpecialtySelect";
 import UploadZone from "./UploadZone";
@@ -107,7 +108,7 @@ export default function SetupWizard({
                 aria-current={n === step ? "step" : undefined}
               >
                 <span className={styles.stepperIndex} aria-hidden="true">
-                  {state === "complete" ? "✓" : n}
+                  {state === "complete" ? <Icon name="check" size={12} /> : n}
                 </span>
                 <span className={styles.stepperLabel}>{labelPt}</span>
               </button>
@@ -121,6 +122,7 @@ export default function SetupWizard({
           <div className={styles.stepBody}>
             <h2 className={styles.stepTitle}>Carrega o teu currículo</h2>
             <p className={styles.patientDataNotice}>
+              <Icon name="alert" size={16} className={styles.noticeIcon} />
               Antes de carregares: se o teu currículo mencionar doentes (por exemplo, na
               casuística), remove ou anonimiza essa informação — não é necessária para a
               formatação.
@@ -169,7 +171,7 @@ export default function SetupWizard({
         <div className={styles.nav}>
           {step > 1 ? (
             <button type="button" className={styles.backButton} onClick={() => goTo((step - 1) as WizardStep)}>
-              Voltar
+              <Icon name="arrowLeft" size={14} /> Voltar
             </button>
           ) : (
             <span />
@@ -186,7 +188,7 @@ export default function SetupWizard({
                 onClick={() => goTo((step + 1) as WizardStep)}
                 disabled={!stepComplete[step]}
               >
-                Continuar
+                Continuar <Icon name="chevronRight" size={14} />
               </button>
             </div>
           )}

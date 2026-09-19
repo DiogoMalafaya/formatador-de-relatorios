@@ -9,9 +9,12 @@ import styles from "./Footer.module.css";
 export default function Footer() {
   return (
     <footer className={styles.footer}>
-      <Link href="/privacidade">Privacidade</Link>
-      <Link href="/termos">Termos de Serviço</Link>
-      <Link href="/reembolsos">Reembolso</Link>
+      <span className={styles.wordmark}>lauda</span>
+      <nav className={styles.links} aria-label="Informação legal">
+        <Link href="/privacidade">Privacidade</Link>
+        <Link href="/termos">Termos de Serviço</Link>
+        <Link href="/reembolsos">Reembolso</Link>
+      </nav>
     </footer>
   );
 }

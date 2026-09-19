@@ -1,36 +1,36 @@
 import type { Metadata } from "next";
-import { Fraunces, Source_Sans_3 } from "next/font/google";
+import { Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
 /**
- * Editorial type pairing (DIO-37): Fraunces, a serif with real display
- * character, for headings; Source Sans 3 for body copy. Both are variable
- * fonts self-hosted by `next/font`, so no request ever leaves for Google.
- * The `-next` suffix keeps these raw variables distinct from the semantic
- * `--font-display` / `--font-body` tokens in globals.css, which add the
- * fallback stacks.
+ * Lauda type pairing: Plus Jakarta Sans carries everything; Instrument Serif
+ * appears once per hero, italic, as a single emphasis word. Both are
+ * self-hosted by `next/font`, so no request ever leaves for Google. The
+ * `-next` suffix keeps these raw variables distinct from the semantic
+ * `--font-sans` / `--font-serif` tokens in globals.css, which add fallbacks.
  */
-const fraunces = Fraunces({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-display-next",
-  axes: ["opsz"],
+  variable: "--font-sans-next",
 });
 
-const sourceSans = Source_Sans_3({
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
-  variable: "--font-body-next",
+  weight: "400",
+  style: "italic",
+  variable: "--font-serif-next",
 });
 
 export const metadata: Metadata = {
-  title: "Formatador de Relatórios",
+  title: "Lauda — Formatador de Relatórios",
   description:
     "Formata o teu currículo de internato segundo as normas do Colégio da especialidade.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-PT" className={`${fraunces.variable} ${sourceSans.variable}`}>
+    <html lang="pt-PT" className={`${jakarta.variable} ${instrumentSerif.variable}`}>
       <body>
         {children}
         <Footer />

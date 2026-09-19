@@ -6,36 +6,11 @@
 }
 
 .button {
+  composes: primary from "../styles/controls.module.css";
   align-self: flex-start;
-  padding: var(--space-3) var(--space-5);
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-on-accent);
-  cursor: pointer;
-  background-color: var(--color-accent);
-  border: none;
-  border-radius: var(--radius-md);
-  transition: background-color 0.15s ease;
-}
-
-.button:hover:not(:disabled) {
-  background-color: var(--color-accent-strong);
-}
-
-.button:disabled {
-  cursor: default;
-  color: var(--color-ink-muted);
-  background-color: var(--color-surface-sunken);
-}
-
-.button:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  padding: var(--space-3) var(--space-6);
 }
 
 .statusError {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-danger);
+  composes: statusError from "../styles/controls.module.css";
 }

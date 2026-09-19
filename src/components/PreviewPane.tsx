@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Icon from "./Icon";
 import styles from "./PreviewPane.module.css";
 
 /**
@@ -63,6 +64,7 @@ export default function PreviewPane() {
         onClick={() => void loadPreview()}
         disabled={status.kind === "loading"}
       >
+        <Icon name="eye" />
         {status.kind === "loading" ? "A gerar pré-visualização…" : "Ver pré-visualização"}
       </button>
 

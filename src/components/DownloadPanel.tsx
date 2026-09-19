@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Icon from "./Icon";
 import styles from "./DownloadPanel.module.css";
 
 /**
@@ -121,6 +122,7 @@ export default function DownloadPanel() {
           onClick={() => void handleDownload()}
           disabled={downloadState.kind === "downloading"}
         >
+          <Icon name="download" />
           {downloadState.kind === "downloading" ? "A descarregar…" : "Descarregar currículo"}
         </button>
         {downloadState.kind === "error" && (

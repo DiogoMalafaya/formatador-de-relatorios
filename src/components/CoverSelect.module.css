@@ -6,54 +6,47 @@
 }
 
 .label {
-  margin: 0;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-ink);
+  composes: fieldLabel from "../styles/controls.module.css";
 }
 
 .gallery {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   gap: var(--space-3);
 }
 
 .card {
   display: flex;
-  width: 108px;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-3);
   cursor: pointer;
-  font-family: var(--font-body);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .card:hover {
-  border-color: var(--color-border-strong);
-}
-
-.card:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  background-color: var(--surface-sunken);
 }
 
 .cardSelected,
 .cardSelected:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 1px var(--color-accent);
+  background-color: var(--sage-100);
+  border-color: var(--sage-700);
 }
 
 .thumbnail {
   display: block;
   width: 100%;
-  background-color: var(--color-page-white); /* cover thumbnails depict the norm-white page */
-  border: 1px solid var(--color-border);
+  background-color: var(--page-white); /* cover thumbnails depict the norm-white page */
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -64,26 +57,24 @@
 }
 
 .cardName {
-  font-size: var(--text-xs);
-  color: var(--color-ink-soft);
+  font: var(--type-body-sm);
+  color: var(--ink-700);
   text-align: center;
 }
 
-.statusError,
-.statusSuccess,
-.statusInfo {
-  margin: 0;
-  font-size: var(--text-sm);
+.cardSelected .cardName {
+  font-weight: 600;
+  color: var(--sage-900);
 }
 
 .statusError {
-  color: var(--color-danger);
+  composes: statusError from "../styles/controls.module.css";
 }
 
 .statusSuccess {
-  color: var(--color-success);
+  composes: statusSuccess from "../styles/controls.module.css";
 }
 
 .statusInfo {
-  color: var(--color-ink-soft);
+  composes: statusInfo from "../styles/controls.module.css";
 }

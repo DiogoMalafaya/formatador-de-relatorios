@@ -1,0 +1,56 @@
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* A tilted wall of pages, anchored right so the light side shows the most. */
+.wall {
+  position: absolute;
+  top: 50%;
+  right: -80px;
+  display: flex;
+  gap: var(--space-4);
+  transform: translateY(-50%) rotate(-12deg);
+  transform-origin: center;
+}
+
+.column {
+  display: flex;
+  width: 180px;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Stagger alternate columns, like a masonry wall. */
+.column:nth-child(even) {
+  margin-top: 150px;
+}
+
+.page {
+  display: block;
+  width: 100%;
+  height: auto;
+  background-color: var(--page-white);
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 960px) {
+  .wall {
+    top: auto;
+    right: 50%;
+    bottom: -260px;
+    transform: translateX(50%) rotate(-12deg);
+  }
+
+  .column {
+    width: 150px;
+  }
+
+  .column:nth-child(even) {
+    margin-top: 100px;
+  }
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Icon from "./Icon";
 import styles from "./LegalPageLayout.module.css";
 
 /**
@@ -17,7 +18,7 @@ export default function LegalPageLayout({ title, children }: LegalPageLayoutProp
     <div className={styles.page}>
       <main className={styles.main}>
         <Link href="/" className={styles.back}>
-          ← Formatador de Relatórios
+          <Icon name="arrowLeft" size={14} /> Voltar ao início
         </Link>
         <h1>{title}</h1>
         {children}

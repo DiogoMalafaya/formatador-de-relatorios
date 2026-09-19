@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Icon from "./Icon";
 import styles from "./UploadZone.module.css";
 
 /**
@@ -126,6 +127,9 @@ export default function UploadZone({ initialFilename, onUploaded }: UploadZonePr
           aria-hidden="true"
           tabIndex={-1}
         />
+        <span className={styles.zoneIcon}>
+          <Icon name="upload" size={20} />
+        </span>
         <p className={styles.zoneTitle}>
           Arrasta o teu currículo .docx para aqui, ou clica para escolher um ficheiro
         </p>
