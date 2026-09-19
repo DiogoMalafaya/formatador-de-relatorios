@@ -1,0 +1,267 @@
+/*
+ * Two-pane workspace (DIO-38).
+ *
+ * The workspace breaks out of the page's content column to the full viewport
+ * width (`50% - 50vw` against the centered container) so the preview pane can
+ * honour "≥60% of the viewport" on desktop. The grid gives the rail a capped
+ * share and the preview the remainder.
+ *
+ * Anchoring the primary action:
+ *  - desktop: the rail is `position: sticky` with a max-height below the
+ *    viewport; its sections scroll internally and the action bar is the
+ *    rail's non-scrolling footer, so it can never leave the screen.
+ *  - mobile: the action bar is a fixed bottom bar; the grid reserves bottom
+ *    padding so content can scroll clear of it.
+ */
+
+.workspace {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  padding: 0 clamp(var(--space-4), 3vw, var(--space-6));
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* --- Preview pane (right on desktop, first on mobile) --- */
+
+.previewCol {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.previewCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.previewHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.previewTitle {
+  font: var(--type-heading-md);
+}
+
+.previewHint {
+  font: var(--type-body-sm);
+  color: var(--ink-600);
+}
+
+/*
+ * Stable height across PreviewPane remounts (cover change → `key` change):
+ * without it the column would collapse to the button and yank the scroll
+ * position — the exact thing DIO-38's acceptance criteria forbid.
+ */
+.previewSlot {
+  min-height: calc(70vh + 4.5rem);
+}
+
+/* --- Rail (left on desktop, accordion on mobile) --- */
+
+.rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - var(--space-6));
+  overflow: hidden;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.railScroll {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+/* Mobile-only accordion header; the rail is always expanded on desktop. */
+.railToggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font: var(--type-body);
+  font-weight: 600;
+  color: var(--ink-900);
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+
+.railToggleChevron {
+  transition: transform 0.15s ease;
+}
+
+.railToggle[aria-expanded="true"] .railToggleChevron {
+  transform: rotate(180deg);
+}
+
+.railBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.railSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.railSection:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.railSectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.railLabel {
+  font: var(--type-label-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-600);
+}
+
+.railValue {
+  font: var(--type-body);
+  color: var(--ink-900);
+  overflow-wrap: anywhere;
+}
+
+.editButton {
+  padding: var(--space-1) var(--space-3);
+  font: var(--type-caption);
+  color: var(--sage-700);
+  cursor: pointer;
+  background-color: var(--sage-100);
+  border: none;
+  border-radius: var(--radius-full);
+  transition: background-color 0.15s ease;
+}
+
+.editButton:hover {
+  background-color: var(--sage-300);
+}
+
+/* --- Anchored primary action --- */
+
+.actionBar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* The rail is narrow: the primary action reads better full-width there. */
+.actionBar button {
+  width: 100%;
+  align-self: stretch;
+  text-align: center;
+}
+
+.actionNote {
+  font: var(--type-body-sm);
+  color: var(--ink-600);
+  text-align: center;
+}
+
+/* --- Mobile: preview stacks first, rail collapses, action bar fixes --- */
+
+@media (max-width: 840px) {
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    /* Clearance for the fixed action bar. */
+    padding-bottom: 8.5rem;
+  }
+
+  .previewCol {
+    order: 1;
+  }
+
+  .rail {
+    order: 2;
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .railScroll {
+    overflow-y: visible;
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .railToggle {
+    display: flex;
+  }
+
+  .railBody {
+    display: none;
+  }
+
+  .railBody[data-open] {
+    display: flex;
+  }
+
+  .actionBar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    padding: var(--space-3) var(--space-4)
+      calc(var(--space-3) + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@media (max-width: 600px) {
+  .previewCard {
+    padding: var(--space-4);
+  }
+
+  /* PreviewPane's own frame drops to 60vh at this width. */
+  .previewSlot {
+    min-height: calc(60vh + 4.5rem);
+  }
+}

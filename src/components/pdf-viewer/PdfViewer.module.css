@@ -1,0 +1,252 @@
+/*
+ * pdf.js preview viewer chrome (DIO-39), in Lauda: white A4 sheets with a
+ * soft shadow floating on the sunken sage-grey background, our own
+ * toolbar and thumbnail rail — nothing of the browser's PDF UI.
+ */
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 70vh;
+  overflow: hidden;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* --- Toolbar ------------------------------------------------------------ */
+
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.pageIndicator {
+  font: var(--type-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-700);
+  white-space: nowrap;
+}
+
+.zoomControls {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.toolButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--ink-700);
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.toolButton:hover:not(:disabled) {
+  color: var(--ink-900);
+  background-color: var(--surface-sunken);
+}
+
+.toolButton:disabled {
+  color: var(--ink-600);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.toolButton[aria-pressed="true"] {
+  color: var(--sage-700);
+  background-color: var(--sage-100);
+  border-color: var(--sage-100);
+}
+
+.toolButton:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.toolDivider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1) var(--space-1);
+  background-color: var(--border);
+}
+
+/* --- Body: thumbnail rail + page stack ----------------------------------- */
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.thumbs {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--space-3);
+  align-items: center;
+  width: 8.5rem;
+  padding: var(--space-3) var(--space-2);
+  overflow-y: auto;
+  background-color: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.thumb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: center;
+  padding: var(--space-1);
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.thumb:hover {
+  background-color: var(--surface-sunken);
+}
+
+.thumb:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.thumbActive {
+  background-color: var(--sage-100);
+}
+
+.thumbCanvas {
+  display: block;
+  /* Thumbnails always show the norm-white output page, whatever the UI theme. */
+  background-color: var(--page-white);
+  border: 1px solid var(--border-strong);
+}
+
+.thumbActive .thumbCanvas {
+  border-color: var(--sage-700);
+}
+
+.thumbLabel {
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-600);
+}
+
+.thumbActive .thumbLabel {
+  color: var(--sage-700);
+  font-weight: 600;
+}
+
+/* --- Scroller ------------------------------------------------------------ */
+
+.scroller {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background-color: var(--surface-sunken);
+}
+
+.scroller:focus-visible {
+  box-shadow: inset var(--shadow-focus);
+}
+
+/*
+ * Gap and padding come inline from the component so the scroll math and the
+ * CSS can never drift apart. `width: max-content` + `min-width: 100%` keeps
+ * a zoomed-in page reachable from its left edge (a centered flex child
+ * overflowing its container would clip the start).
+ */
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: max-content;
+  min-width: 100%;
+  margin: 0 auto;
+}
+
+.page {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  /* The document itself is norm-white regardless of UI theme. */
+  background-color: var(--page-white);
+  box-shadow: var(--shadow-md);
+}
+
+.pageCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Loading skeleton ----------------------------------------------------- */
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  padding: 24px;
+}
+
+.skeletonPage {
+  width: min(28rem, 85%);
+  aspect-ratio: 210 / 297;
+  background-color: var(--surface);
+  border-radius: 2px;
+  box-shadow: var(--shadow-sm);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonPage + .skeletonPage {
+  animation-delay: 0.2s;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* --- Error --------------------------------------------------------------- */
+
+.error {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--danger);
+}
+
+/* --- Mobile ---------------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  .viewer {
+    height: 60vh;
+  }
+
+  /* Thumbnails collapse on small screens; zoom + indicator remain. */
+  .thumbs {
+    display: none;
+  }
+}

@@ -14,16 +14,32 @@
   composes: statusError from "../styles/controls.module.css";
 }
 
-.frame {
+/*
+ * Placeholder shown while the preview PDF is being fetched or the pdf.js
+ * viewer chunk is loading; sized like the viewer so nothing jumps.
+ */
+.viewerSkeleton {
   width: 100%;
   height: 70vh;
   background-color: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  animation: preview-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes preview-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @media (max-width: 600px) {
-  .frame {
+  .viewerSkeleton {
     height: 60vh;
   }
 }

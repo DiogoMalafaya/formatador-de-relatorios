@@ -39,8 +39,16 @@ export async function GET() {
     );
   }
 
+  // Persist the exact-count validations from the paginated render (DIO-42)
+  // so the warnings route can serve them without re-rendering; cleared when
+  // this render wasn't paginated so they can never go stale.
   await updateSession(session.id, {
-    artifacts: { ...session.artifacts, previewStorageKey: rendered.storageKey },
+    artifacts: {
+      ...session.artifacts,
+      previewStorageKey: rendered.storageKey,
+      renderWarnings: rendered.renderWarnings ?? [],
+      renderedPageCount: rendered.pageCount,
+    },
   });
 
   return new Response(new Uint8Array(rendered.pdf), {

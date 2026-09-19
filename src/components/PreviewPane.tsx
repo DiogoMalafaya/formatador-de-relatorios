@@ -1,31 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useState } from "react";
 import Icon from "./Icon";
 import styles from "./PreviewPane.module.css";
 
 /**
- * Watermarked preview (DIO-13): fetches the PDF as a blob rather than
- * pointing an <iframe> straight at the API route, so a failure (no upload
- * yet, expired session) shows the crafted pt-PT message instead of the
- * browser's raw JSON/error rendering inside the frame.
+ * Watermarked preview (DIO-13, DIO-39): fetches the PDF bytes from the
+ * session-cookie-gated endpoint and hands them to our pdf.js viewer, so the
+ * document renders identically in every browser under our own chrome — no
+ * <iframe>, no browser PDF UI, no blob URL. A failure (no upload yet,
+ * expired session) still shows the crafted pt-PT message.
+ *
+ * pdf.js is client-only and heavy, so the viewer is code-split and never
+ * server-rendered.
  */
+
+const PdfViewer = dynamic(() => import("./pdf-viewer/PdfViewer"), {
+  ssr: false,
+  loading: () => <div className={styles.viewerSkeleton} aria-hidden="true" />,
+});
 
 type Status =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; url: string };
+  | { kind: "ready"; data: ArrayBuffer };
 
 export default function PreviewPane() {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const urlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    };
-  }, []);
 
   async function loadPreview() {
     setStatus({ kind: "loading" });
@@ -43,11 +46,8 @@ export default function PreviewPane() {
         return;
       }
 
-      const blob = await response.blob();
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      const url = URL.createObjectURL(blob);
-      urlRef.current = url;
-      setStatus({ kind: "ready", url });
+      const data = await response.arrayBuffer();
+      setStatus({ kind: "ready", data });
     } catch {
       setStatus({
         kind: "error",
@@ -68,19 +68,17 @@ export default function PreviewPane() {
         {status.kind === "loading" ? "A gerar pré-visualização…" : "Ver pré-visualização"}
       </button>
 
+      {status.kind === "loading" && (
+        <div className={styles.viewerSkeleton} aria-hidden="true" />
+      )}
+
       {status.kind === "error" && (
         <p className={styles.statusError} role="alert">
           {status.message}
         </p>
       )}
 
-      {status.kind === "ready" && (
-        <iframe
-          title="Pré-visualização do currículo formatado, com marca de água"
-          src={status.url}
-          className={styles.frame}
-        />
-      )}
+      {status.kind === "ready" && <PdfViewer data={status.data} />}
     </div>
   );
 }

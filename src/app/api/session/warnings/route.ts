@@ -22,7 +22,17 @@ export async function GET() {
 
   try {
     const prepared = await prepareDocument(session);
-    return Response.json({ ok: true, warnings: prepared.document.warnings });
+
+    // Exact-count validations from the last paginated render (DIO-42),
+    // persisted by the preview route. When an exact page count exists, the
+    // pre-render *estimate* is redundant — prefer the real page map.
+    const renderWarnings = session.artifacts?.renderWarnings ?? [];
+    const hasExactPageCount = session.artifacts?.renderedPageCount !== undefined;
+    const parseWarnings = hasExactPageCount
+      ? prepared.document.warnings.filter((warning) => warning.code !== "page-limit-possibly-exceeded")
+      : prepared.document.warnings;
+
+    return Response.json({ ok: true, warnings: [...parseWarnings, ...renderWarnings] });
   } catch (error) {
     if (error instanceof DocumentNotReadyError) {
       return Response.json(
