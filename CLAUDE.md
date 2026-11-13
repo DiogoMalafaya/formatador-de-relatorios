@@ -15,13 +15,16 @@ and Vercel project are still `formatador-de-relatorios`.
 ## Tickets
 
 Work is tracked in Linear, project **Formatador de Relatórios**, team `DIO`
-(issues DIO-5 … DIO-42). Use the `linear-agent` CLI.
+(issues DIO-5 … DIO-56). Use the `linear-agent` CLI.
 
-Two waves exist, and they number their build order differently:
+Three waves exist, and they number their build order differently:
 
 - **DIO-5 … DIO-22** — the original build. Ticket bodies carry `Build order: N/16`.
 - **DIO-37 … DIO-42** — the frontend-overhaul + multi-document initiative, all
   merged. Bodies carry `Build order: N/6` and a `PRD:` pointer.
+- **DIO-43 … DIO-56** — the CV output-quality initiative
+  (`docs/prd-cv-output-quality.md`), open. Bodies carry `Build order: N/14`.
+  1–9 are P0, 10–14 P1; a discovery review is planned after build order 5/14.
 
 Dependencies are prose, not enforced links — read the ticket before starting and
 respect the stated order. `linear-agent list --delegated --json` shows what has
@@ -31,9 +34,9 @@ Blockers and decisions only Diogo can make go on the ticket as a tagged comment,
 not just in the terminal — see the Linear section of the global `~/.claude/CLAUDE.md`
 for the mention format.
 
-**Still open:** DIO-20 (formatting QA against real reports + launch checklist).
-It was deliberately parked until the product could accept real multi-file CVs,
-which it now can. It is the natural next ticket.
+**Parked:** DIO-20 (formatting QA against real reports + launch checklist). It
+waits on the output-quality wave: there is no point QA'ing output already known
+to look unfinished.
 
 ## Domain: what the norms actually require
 
