@@ -404,3 +404,25 @@ profiles), `specialties/data.ts`, `formatting/parseDocx.ts` (image extraction), 
 | Q11 | **Re-verify sources before launch:** the Ordem site moves files (Ortopedia's links point at a `staging.` host, and filenames use decomposed accents). Who re-checks profile sources, and how often? | Diogo | Before launch |
 | Q12 | **PDF-delivered profiles (Pediatria):** blank recto-padding pages off by default (recommended), or keep print layout because students print anyway? | Diogo | Before US7 |
 | Q13 | **MFR image omission granularity:** the norms forbid "fotografias ou gráficos". Do logos and simple diagrams count? Recommendation: treat every embedded image as forbidden for MFR, with the per-image warning, rather than guessing a category | Diogo | Before US12 |
+
+## 13. Tickets
+
+Created 2026-11-13 in Linear, project *Formatador de Relatórios*. Bodies carry `Build order: N/14`.
+
+| Build order | Ticket | User stories |
+|---|---|---|
+| 1 | DIO-43 — [P0] Sourced norm profiles per specialty (MFR cap 100) | US2 |
+| 2 | DIO-44 — [P0] Specialty dropdown lists only supported specialties | US1 |
+| 3 | DIO-45 — [P0] Fix chapter structure, duplicate cover text and front-matter pages | US3 |
+| 4 | DIO-46 — [P0] Embed open fonts and honour the student's font choice | US4 |
+| 5 | DIO-47 — [P0] Golden corpus, compliance checker and visual regression | US13 |
+| — | *Discovery checkpoint (§4)* | |
+| 6 | DIO-48 — [P0] Designed tables: padding, header fill, captions, Lista de tabelas | US8 |
+| 7 | DIO-49 — [P0] Keep student images unless the norms forbid them | US12 |
+| 8 | DIO-50 — [P0] Compliant front matter: cover fields, rosto, signatures, glossary | US5 |
+| 9 | DIO-51 — [P0] Arabic numbering from the cover and truly blank filler pages | US10, US7 |
+| 10 | DIO-52 — [P1] Body typography: justified, hyphenated, tighter rhythm | US9 |
+| 11 | DIO-53 — [P1] Automatic section numbering and level-styled Índice | US6 |
+| 12 | DIO-54 — [P1] Chapter dividers and live page budget | US7 |
+| 13 | DIO-55 — [P1] Mirrored header and footer for duplex printing | US10 |
+| 14 | DIO-56 — [P1] House themes and expressive covers, constrained by profile | US11 |
