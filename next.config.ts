@@ -26,8 +26,10 @@ const nextConfig: NextConfig = {
    * Scoped to the routes that actually render PDFs.
    */
   outputFileTracingIncludes: {
-    "/api/session/preview": ["./node_modules/@sparticuz/chromium/**/*"],
-    "/api/session/download": ["./node_modules/@sparticuz/chromium/**/*"],
+    // The embedded fonts (DIO-46) are read from disk at render time, which
+    // tracing can't see either.
+    "/api/session/preview": ["./node_modules/@sparticuz/chromium/**/*", "./src/lib/pdf/fonts/**/*"],
+    "/api/session/download": ["./node_modules/@sparticuz/chromium/**/*", "./src/lib/pdf/fonts/**/*"],
   },
 };
 

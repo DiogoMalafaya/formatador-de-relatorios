@@ -31,7 +31,7 @@ describe("buildRuleSetCss", () => {
     const ruleSet = getRuleSet("generic");
     const css = buildRuleSetCss(ruleSet, { fontFamily: "Times New Roman", titleSizePt: 14 });
     assert.match(css, /margin: 2\.5cm/);
-    assert.match(css, /font-family: "Times New Roman", serif/);
+    assert.match(css, /font-family: "Tinos", serif/);
     assert.match(css, /font-size: 12pt/);
     assert.match(css, /line-height: 1\.5/);
     assert.match(css, /color: black/);
@@ -41,6 +41,6 @@ describe("buildRuleSetCss", () => {
     const ruleSet = getRuleSet("generic");
     const css = buildRuleSetCss(ruleSet, { fontFamily: "Arial", titleSizePt: 12 });
     assert.match(css, /h1, h2, h3 \{[^}]*font-weight: bold;[^}]*font-size: 12pt;/);
-    assert.match(css, /font-family: "Arial", sans-serif/);
+    assert.match(css, /font-family: "Arimo", sans-serif/);
   });
 });

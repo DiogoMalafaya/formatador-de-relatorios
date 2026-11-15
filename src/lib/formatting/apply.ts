@@ -43,6 +43,8 @@ export interface FormattedDocument {
   ruleSet: RuleSet;
   /** Best-effort guess at the candidate's name, for the cover page (DIO-12). Undefined when nothing usable was found. */
   extractedCandidateName?: string;
+  /** The norm font in use, so the render can embed it in stamped footers too (DIO-46). */
+  fontFamily: FontFamily;
 }
 
 /**
@@ -108,6 +110,7 @@ export function formatParsedDocument(
     warnings,
     ruleSet,
     extractedCandidateName: extractCandidateName(parsed),
+    fontFamily: choices.fontFamily,
   };
 }
 

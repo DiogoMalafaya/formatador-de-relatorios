@@ -185,8 +185,9 @@ why DIO-40/41/42 exist.
   Converging in exactly **2 passes** is a tested property (`MAX_PASSES` is 3).
 - **Numbering:** front matter in lowercase roman (cover footer suppressed), body
   restarting at arabic 1. Footers and the running header are stamped with
-  pdf-lib *after* the final print, because Chromium's own footer template can
-  only produce a single arabic sequence.
+  pdf-lib *after* the final print (`stamp.ts`, shared with the single-file
+  path). Chromium's footer template can only produce one arabic sequence, and
+  it can't load our embedded fonts.
 - **Blank pages** ("página intencionalmente deixada em branco") are inserted so
   the Índice, the body and each major part open on a recto page. The Índice
   gets the same treatment as the body: a 1px marker (`TOC_START_MARKER_ID`)
@@ -216,6 +217,28 @@ Three invariants in `paginate.ts` are easy to break and were each a real bug:
    The marker sits right before the **first arabic heading**, not right after
    the Índice. Otherwise front matter placed after the Índice becomes body
    page 1, and its `<h1>` becomes the only "major part" (DIO-45).
+
+### Fonts (`src/lib/pdf/fonts.ts`, DIO-46)
+
+Serverless Chromium (`@sparticuz/chromium`) ships **only Open Sans**. Never
+rely on a system font: it works on a Mac and silently breaks in production.
+
+- Every norm font is embedded from open-licence files in `src/lib/pdf/fonts/`
+  (licence texts alongside): Arial → **Arimo** and Times New Roman → **Tinos**
+  (both metric-compatible, so line breaks and page counts match), Verdana →
+  **DejaVu LGC Sans** (no metric-compatible open Verdana exists; decided
+  2026-11-15).
+- Faces are requested from a fake origin and answered by request interception
+  (`serveEmbeddedFonts`), so a page fetches only the faces it uses. Renders
+  wait for `document.fonts.ready` before printing.
+- Stamped footers and headers embed the same regular face via
+  `@pdf-lib/fontkit`.
+- `next.config.ts` traces `src/lib/pdf/fonts/**` into the PDF routes. Reading
+  them at runtime is invisible to Vercel's file tracing.
+- `fonts.test.mts` renders real PDFs and asserts that no system font (Arial,
+  Times, Helvetica, Verdana, Open Sans) appears in them.
+- Students never choose a font. Where the norms allow a choice (MFR: Arial
+  or Times New Roman), the profile's default applies.
 
 ## Frontend
 
@@ -275,7 +298,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **329 tests passing** on `main`. Some suites launch a real
+Current baseline: **330 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions

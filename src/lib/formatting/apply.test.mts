@@ -51,7 +51,7 @@ describe("applyFormatting", () => {
       fontFamily: "Arial",
       titleSizePt: 12,
     });
-    assert.match(result.css, /font-family: "Arial", sans-serif/);
+    assert.match(result.css, /font-family: "Arimo", sans-serif/);
   });
 
   test("the same document is checked against whichever profile applies — no code change", async () => {
@@ -66,7 +66,7 @@ describe("applyFormatting", () => {
     const buffer = await buildDocx([paragraph("Texto.")]);
     const result = await applyFormatting(buffer, { ruleSetId: "pediatria" });
     assert.match(result.css, /margin: 2\.5cm 3cm 2\.5cm 3cm/);
-    assert.match(result.css, /font-family: "Verdana", sans-serif/);
+    assert.match(result.css, /font-family: "DejaVu LGC Sans", sans-serif/);
     assert.match(result.css, /font-size: 10pt/);
   });
 });

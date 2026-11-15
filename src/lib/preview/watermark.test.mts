@@ -20,7 +20,7 @@ describe("applyWatermark", () => {
   });
 
   test("embeds the watermark text into the tile it generates", () => {
-    const document = { html: "<p>x</p>", css: "", warnings: [], ruleSet: {} as never };
+    const document = { html: "<p>x</p>", css: "", warnings: [], ruleSet: {} as never, fontFamily: "Arial" as const };
     const watermarked = applyWatermark(document, "TESTE");
     const base64 = watermarked.css.match(/base64,([^"]+)"/)?.[1];
     assert.ok(base64);
@@ -29,7 +29,7 @@ describe("applyWatermark", () => {
   });
 
   test("escapes watermark text before it reaches the SVG markup", () => {
-    const document = { html: "<p>x</p>", css: "", warnings: [], ruleSet: {} as never };
+    const document = { html: "<p>x</p>", css: "", warnings: [], ruleSet: {} as never, fontFamily: "Arial" as const };
     const watermarked = applyWatermark(document, "<script>alert(1)</script>");
     const base64 = watermarked.css.match(/base64,([^"]+)"/)?.[1];
     const decoded = Buffer.from(base64!, "base64").toString("utf-8");
