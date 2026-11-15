@@ -5,6 +5,7 @@ import SetupWizard from "@/components/SetupWizard";
 import { PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getCurrentSession } from "@/lib/session/cookies";
 import type { SessionRecord } from "@/lib/session";
+import { getMasterSource } from "@/lib/session/sources";
 import { maxReachableStep, resolveInitialSetupStep } from "@/lib/wizard/initialStep";
 import styles from "./page.module.css";
 
@@ -47,6 +48,7 @@ export default async function Home({ searchParams }: HomeProps) {
   // Edge case: a success redirect whose session no longer reaches the
   // workspace (e.g. lost cookie) still deserves the download/confirmation
   // panel instead of silently restarting the wizard.
+  const masterSource = session ? getMasterSource(session) : null;
   const orphanedSuccess = pagamento === "sucesso" && maxReachableStep(session) < 4;
 
   return (
@@ -172,8 +174,8 @@ export default async function Home({ searchParams }: HomeProps) {
 
           <SetupWizard
             initialStep={resolveInitialSetupStep(session)}
-            hasUpload={Boolean(session?.upload)}
-            uploadFilename={session?.upload?.originalFilename}
+            hasUpload={masterSource !== null}
+            uploadFilename={masterSource?.originalFilename}
             specialtyId={session?.specialtyId}
             coverId={session?.coverId}
             paid={paid}

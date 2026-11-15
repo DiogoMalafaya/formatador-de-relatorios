@@ -1,3 +1,4 @@
+import { getOrderedSources } from "../session/sources.ts";
 import type { SessionRecord } from "../session/types.ts";
 
 /**
@@ -9,9 +10,12 @@ export type WizardStep = 1 | 2 | 3 | 4;
 /**
  * Furthest step the record's actual state supports. The record — never the
  * persisted `setupStep` number — decides what counts as completed.
+ *
+ * "Has an upload" goes through `getOrderedSources`, which knows both the
+ * multi-file `sources[]` layout (DIO-40) and the legacy single `upload`.
  */
 export function maxReachableStep(session: SessionRecord | null): WizardStep {
-  if (!session?.upload) return 1;
+  if (!session || getOrderedSources(session).length === 0) return 1;
   if (!session.specialtyId) return 2;
   if (!session.coverId) return 3;
   return 4;
