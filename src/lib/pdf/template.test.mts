@@ -1,10 +1,10 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { buildFooterTemplate, buildHeaderTemplate, buildHtmlDocument } from "./template.ts";
-import { getRuleSet, GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
+import { getRuleSet, HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 
-const ruleSet = getRuleSet(GENERIC_RULE_SET_ID);
+const ruleSet = getRuleSet(HOUSE_RULE_SET_ID);
 
 describe("buildHtmlDocument", () => {
   test("wraps the parsed html and css into a full page with a utf-8 charset", () => {

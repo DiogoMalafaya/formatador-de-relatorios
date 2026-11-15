@@ -17,7 +17,7 @@ export type FormattingWarningCode =
   | "stale-toc-replaced"
   /** Exact-count variants, emitted by the two-pass render (DIO-42) once a real page map exists. */
   | "page-limit-exceeded"
-  | "resumo-too-long";
+  | "summary-section-too-long";
 
 export interface FormattingWarning {
   code: FormattingWarningCode;
@@ -85,10 +85,14 @@ export function pageLimitExceededWarning(pages: number, maxPages: number): Forma
   };
 }
 
-/** The norms cap the "Resumo do currículo" at `maxPages` (2 in every rule set seen so far). */
-export function resumoTooLongWarning(pages: number, maxPages: number): FormattingWarning {
+/**
+ * A profile's capped summary section ran long (MFR "Resumo do currículo" ≤ 2,
+ * Pediatria "Síntese curricular" ≤ 3). `labelPt` is the section as the
+ * sentence subject, e.g. "O resumo do currículo".
+ */
+export function summaryTooLongWarning(labelPt: string, pages: number, maxPages: number): FormattingWarning {
   return {
-    code: "resumo-too-long",
-    messagePt: `O resumo do currículo ocupa ${pages} páginas — a norma permite no máximo ${maxPages}. Encurta essa secção antes de entregares.`,
+    code: "summary-section-too-long",
+    messagePt: `${labelPt} ocupa ${pages} páginas — a norma permite no máximo ${maxPages}. Encurta essa secção antes de entregares.`,
   };
 }

@@ -4,7 +4,7 @@ import {
   buildPageLabels,
   buildRunningHeaders,
   planPagination,
-  resumoSectionSpan,
+  sectionSpan,
 } from "./paginate.ts";
 import { BODY_START_MARKER_ID } from "./template.ts";
 import type { MergedHeading } from "../merge/types.ts";
@@ -251,7 +251,9 @@ describe("buildRunningHeaders", () => {
   });
 });
 
-describe("resumoSectionSpan", () => {
+const RESUMO = /^resumo( do curriculo)?$/;
+
+describe("sectionSpan", () => {
   test("measures the resumo up to the next same-or-shallower heading", () => {
     const headings = [
       bodyHeading("resumo", 1, "Resumo do currículo"),
@@ -264,7 +266,7 @@ describe("resumoSectionSpan", () => {
       ["seguinte", 7],
     ]);
 
-    const span = resumoSectionSpan(headings, headingPages, 20);
+    const span = sectionSpan(headings, headingPages, 20, RESUMO);
 
     assert.deepEqual(span, { startPage: 4, pageCount: 3 });
   });
@@ -273,20 +275,36 @@ describe("resumoSectionSpan", () => {
     const headings = [bodyHeading("resumo", 1, "Resumo")];
     const headingPages = new Map([["resumo", 9]]);
 
-    assert.deepEqual(resumoSectionSpan(headings, headingPages, 10), { startPage: 9, pageCount: 2 });
+    assert.deepEqual(sectionSpan(headings, headingPages, 10, RESUMO), { startPage: 9, pageCount: 2 });
   });
 
   test("matches the heading regardless of accents or case", () => {
     const headings = [bodyHeading("resumo", 1, "RESUMO DO CURRICULO")];
     const headingPages = new Map([["resumo", 3]]);
 
-    assert.ok(resumoSectionSpan(headings, headingPages, 8));
+    assert.ok(sectionSpan(headings, headingPages, 8, RESUMO));
   });
 
   test("returns undefined when the document has no resumo", () => {
     const headings = [bodyHeading("parte-1", 1, "Atividade Clínica")];
     const headingPages = new Map([["parte-1", 3]]);
 
-    assert.equal(resumoSectionSpan(headings, headingPages, 8), undefined);
+    assert.equal(sectionSpan(headings, headingPages, 8, RESUMO), undefined);
+  });
+
+  test("finds Pediatria's síntese curricular with its own pattern", () => {
+    const headings = [
+      bodyHeading("sintese", 1, "Síntese Curricular"),
+      bodyHeading("clinica", 1, "Atividade Clínica"),
+    ];
+    const headingPages = new Map([
+      ["sintese", 5],
+      ["clinica", 9],
+    ]);
+
+    assert.deepEqual(sectionSpan(headings, headingPages, 30, /^sintese curricular$/), {
+      startPage: 5,
+      pageCount: 4,
+    });
   });
 });

@@ -4,7 +4,7 @@ import {
   imageDetectedWarning,
   pageLimitExceededWarning,
   pageLimitPossiblyExceededWarning,
-  resumoTooLongWarning,
+  summaryTooLongWarning,
   tablePresentWarning,
   unsupportedStructureWarning,
   withSourceFilename,
@@ -74,12 +74,12 @@ describe("formatting warnings", () => {
       assert.doesNotMatch(warning.messagePt, /~|estimativa/, "an exact count never hedges");
     });
 
-    test("resumo warning states the span and the cap", () => {
-      const warning = resumoTooLongWarning(4, 2);
+    test("summary-section warning names the section, the span and the cap", () => {
+      const warning = summaryTooLongWarning("A síntese curricular", 4, 3);
 
-      assert.equal(warning.code, "resumo-too-long");
-      assert.match(warning.messagePt, /4 páginas/);
-      assert.match(warning.messagePt, /2/);
+      assert.equal(warning.code, "summary-section-too-long");
+      assert.match(warning.messagePt, /^A síntese curricular ocupa 4 páginas/);
+      assert.match(warning.messagePt, /no máximo 3/);
     });
   });
 });

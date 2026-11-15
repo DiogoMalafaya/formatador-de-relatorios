@@ -4,7 +4,7 @@ import {
   getSpecialties,
   getSpecialtyById,
   resolveRuleSetId,
-  GENERIC_RULE_SET_ID,
+  HOUSE_RULE_SET_ID,
 } from "./index.ts";
 
 describe("specialties", () => {
@@ -37,8 +37,12 @@ describe("specialties", () => {
   });
 
   describe("resolveRuleSetId", () => {
-    test("falls back to the generic rule set when a specialty has no override", () => {
-      assert.equal(resolveRuleSetId("pediatria"), GENERIC_RULE_SET_ID);
+    test("falls back to the house standard when a specialty has no profile yet", () => {
+      assert.equal(resolveRuleSetId("cardiologia"), HOUSE_RULE_SET_ID);
+    });
+
+    test("resolves Pediatria to its own profile", () => {
+      assert.equal(resolveRuleSetId("pediatria"), "pediatria");
     });
 
     test("returns the specialty's own rule set when one exists", () => {
@@ -48,8 +52,8 @@ describe("specialties", () => {
       );
     });
 
-    test("falls back to the generic rule set for an unknown specialty id", () => {
-      assert.equal(resolveRuleSetId("not-a-real-specialty"), GENERIC_RULE_SET_ID);
+    test("falls back to the house standard for an unknown specialty id", () => {
+      assert.equal(resolveRuleSetId("not-a-real-specialty"), HOUSE_RULE_SET_ID);
     });
   });
 });

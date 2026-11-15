@@ -28,7 +28,7 @@ import {
   buildRunningHeaders,
   partHeadingLevel,
   planPagination,
-  resumoSectionSpan,
+  sectionSpan,
 } from "./paginate.ts";
 import type { PaginationPlan } from "./paginate.ts";
 import {
@@ -42,7 +42,8 @@ import {
 } from "./template.ts";
 import { fillTocPageNumbers } from "../merge/toc.ts";
 import type { MergedHeading } from "../merge/types.ts";
-import { pageLimitExceededWarning, resumoTooLongWarning } from "../formatting/warnings.ts";
+import { pageLimitExceededWarning, summaryTooLongWarning } from "../formatting/warnings.ts";
+import { printMargins } from "../formatting/ruleSet.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 
@@ -71,7 +72,7 @@ export interface PaginatedRenderReport {
 export interface PaginatedRenderResult {
   pdf: Buffer;
   report: PaginatedRenderReport;
-  /** Exact-count validations over the final geometry (80-page limit, resumo length). */
+  /** Exact-count validations over the final geometry (page cap, summary-section length). */
   warnings: FormattingWarning[];
 }
 
@@ -98,7 +99,6 @@ export async function renderPaginatedPdf(
 
   try {
     const page = await browser.newPage();
-    const marginCm = `${ruleSet.marginsCm}cm`;
 
     for (;;) {
       passes += 1;
@@ -111,7 +111,7 @@ export async function renderPaginatedPdf(
           format: "A4",
           printBackground: true,
           displayHeaderFooter: false,
-          margin: { top: marginCm, bottom: marginCm, left: marginCm, right: marginCm },
+          margin: printMargins(ruleSet.margins),
         }),
       );
 
@@ -162,10 +162,11 @@ export async function renderPaginatedPdf(
   if (ruleSet.constraints.maxPages !== undefined && totalPages > ruleSet.constraints.maxPages) {
     warnings.push(pageLimitExceededWarning(totalPages, ruleSet.constraints.maxPages));
   }
-  if (ruleSet.constraints.resumoMaxPages !== undefined) {
-    const span = resumoSectionSpan(headings, plan.headingPages, totalPages);
-    if (span && span.pageCount > ruleSet.constraints.resumoMaxPages) {
-      warnings.push(resumoTooLongWarning(span.pageCount, ruleSet.constraints.resumoMaxPages));
+  const summaryRule = ruleSet.constraints.summarySection;
+  if (summaryRule) {
+    const span = sectionSpan(headings, plan.headingPages, totalPages, summaryRule.headingPattern);
+    if (span && span.pageCount > summaryRule.maxPages) {
+      warnings.push(summaryTooLongWarning(summaryRule.labelPt, span.pageCount, summaryRule.maxPages));
     }
   }
 

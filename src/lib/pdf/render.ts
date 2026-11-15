@@ -16,6 +16,7 @@
 import { launchBrowser } from "./browser.ts";
 import { buildFooterTemplate, buildHeaderTemplate, buildHtmlDocument } from "./template.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
+import { printMargins } from "../formatting/ruleSet.ts";
 
 export interface RenderPdfOptions {
   /** Printed in the footer when the rule set's `footer.includeCandidateName` is set. */
@@ -32,7 +33,6 @@ export async function renderPdf(document: FormattedDocument, options: RenderPdfO
     // nothing left to fetch over the network — "load" is enough to wait for.
     await page.setContent(buildHtmlDocument(document), { waitUntil: "load" });
 
-    const marginCm = `${ruleSet.marginsCm}cm`;
     const displayHeaderFooter = ruleSet.footer.includeCandidateName || ruleSet.footer.includePageNumber;
 
     const pdf = await page.pdf({
@@ -41,7 +41,7 @@ export async function renderPdf(document: FormattedDocument, options: RenderPdfO
       displayHeaderFooter,
       headerTemplate: buildHeaderTemplate(),
       footerTemplate: buildFooterTemplate(ruleSet, options.candidateName),
-      margin: { top: marginCm, bottom: marginCm, left: marginCm, right: marginCm },
+      margin: printMargins(ruleSet.margins),
     });
 
     return Buffer.from(pdf);

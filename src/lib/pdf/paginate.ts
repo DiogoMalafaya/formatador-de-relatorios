@@ -253,24 +253,27 @@ export function buildRunningHeaders(
   return headers;
 }
 
-export interface ResumoSpan {
-  /** Final absolute page where the resumo section starts. */
+export interface SectionSpan {
+  /** Final absolute page where the section starts. */
   startPage: number;
-  /** Pages between the resumo heading and the next same-or-shallower heading (or end of document). */
+  /** Pages between the section heading and the next same-or-shallower heading (or end of document). */
   pageCount: number;
 }
 
-const RESUMO_PATTERN = /^resumo( do curriculo)?$/;
-
-/** Locates the "Resumo do currículo" section and how many pages it spans, if present. */
-export function resumoSectionSpan(
+/**
+ * Locates the first section whose heading matches `pattern` (tested against
+ * the heading text lowercased and without accents) and how many pages it
+ * spans, if present. Used for a profile's capped summary section.
+ */
+export function sectionSpan(
   headings: readonly MergedHeading[],
   headingPages: ReadonlyMap<string, number>,
   totalPages: number,
-): ResumoSpan | undefined {
+  pattern: RegExp,
+): SectionSpan | undefined {
   for (let i = 0; i < headings.length; i += 1) {
     const heading = headings[i];
-    if (!RESUMO_PATTERN.test(normalize(heading.text))) continue;
+    if (!pattern.test(normalize(heading.text))) continue;
 
     const startPage = headingPages.get(heading.id);
     if (startPage === undefined) return undefined;

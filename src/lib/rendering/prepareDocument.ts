@@ -5,7 +5,7 @@ import {
   formatParsedDocument,
 } from "../formatting/apply.ts";
 import { parseDocxDocument } from "../formatting/parseDocx.ts";
-import { getRuleSet, GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
+import { getRuleSet, HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { withSourceFilename } from "../formatting/warnings.ts";
 import { resolveRuleSetId } from "../specialties/index.ts";
 import { mergeCoverWithDocument } from "../covers/merge.ts";
@@ -57,7 +57,7 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
     throw new DocumentNotReadyError("session has no uploaded sources");
   }
 
-  const ruleSetId = session.specialtyId ? resolveRuleSetId(session.specialtyId) : GENERIC_RULE_SET_ID;
+  const ruleSetId = session.specialtyId ? resolveRuleSetId(session.specialtyId) : HOUSE_RULE_SET_ID;
 
   if (sources.length === 1) {
     const sourceBuffer = await getObject(master.storageKey);
