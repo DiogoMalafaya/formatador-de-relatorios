@@ -36,6 +36,11 @@ export interface MergedHeading {
   sourceId: string;
   /** Roman for front-matter headings, arabic for body headings (PRD US8). */
   numbering: PageNumbering;
+  /**
+   * A part title: a chapter's top heading (body) or a level-1 front-matter
+   * title. Themes style these as one family; carries `class="part-title"`.
+   */
+  part?: boolean;
 }
 
 /** One generated Índice entry. Page number is a placeholder until pass 2 fills it. */
@@ -46,6 +51,8 @@ export interface TocEntry {
   depth: number;
   text: string;
   numbering: PageNumbering;
+  /** Mirrors `MergedHeading.part`, so the Índice styles part titles like the headings. */
+  part?: boolean;
 }
 
 export interface MergeOptions {
@@ -83,4 +90,10 @@ export interface MergeResult {
   warnings: FormattingWarning[];
   /** True when there was nothing to merge and the master passed through byte-identical. */
   passthrough: boolean;
+  /**
+   * The candidate's name, read from the master's own cover before it was
+   * dropped (DIO-45). Preferred over `extractCandidateName`, which would pick
+   * the first front-matter title in a merged document.
+   */
+  candidateName?: string;
 }

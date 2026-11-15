@@ -9,6 +9,7 @@ import { formatParsedDocument } from "../formatting/apply.ts";
 import { HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { buildDocx, heading, longParagraphs, paragraph } from "../formatting/testFixtures.ts";
 import type { MergeSource } from "../merge/types.ts";
+import { buildMasterWithListsAfterTocFixture } from "../merge/testFixtures.ts";
 
 /**
  * End-to-end two-pass render (DIO-42). Like `render.test.mts` these launch a
@@ -148,6 +149,55 @@ describe("renderPaginatedPdf", () => {
     const limit = result.warnings.find((warning) => warning.code === "page-limit-exceeded");
     assert.ok(limit, "a breach of the 100-page cap must be reported once the real count is known");
     assert.match(limit.messagePt, new RegExp(String(result.report.totalPages)));
+  });
+});
+
+describe("renderPaginatedPdf — front matter after the Índice (DIO-45)", () => {
+  test("lists stay front matter; every chapter and the Índice open on a recto; the header follows the chapter", async () => {
+    const master = await buildMasterWithListsAfterTocFixture();
+    const chapters = [
+      await source("um", [heading(1, "SAÚDE MATERNA"), ...longParagraphs(5, 120)]),
+      await source("dois", [heading(1, "Saúde Mental"), ...longParagraphs(5, 120)]),
+      await source("tres", [heading(1, "planeamento familiar"), ...longParagraphs(5, 120)]),
+    ];
+    const merged = mergeDocuments(master, chapters);
+    const document = formatParsedDocument(merged.document, { ruleSetId: HOUSE_RULE_SET_ID }, {
+      extraWarnings: merged.warnings,
+    });
+
+    const { report } = await renderPaginatedPdf(document, {
+      candidateName: merged.candidateName ?? "?",
+      headings: merged.headings,
+    });
+
+    const page = (text: string) => {
+      const heading = merged.headings.find((h) => h.text === text);
+      assert.ok(heading, text);
+      return report.headingPages[heading.id];
+    };
+
+    assert.equal(report.tocStartPage !== undefined && report.tocStartPage % 2, 1, "Índice on a recto");
+    assert.ok(page("Lista de Abreviaturas e Siglas") < report.bodyStartPage, "abbreviations are front matter");
+    assert.ok(page("Lista de Tabelas") > page("Lista de Abreviaturas e Siglas"), "each list on its own page");
+
+    const parts = ["Identificação", "SAÚDE MATERNA", "Saúde Mental", "planeamento familiar"];
+    for (const part of parts) {
+      assert.equal(page(part) % 2, 1, `${part} opens on a recto`);
+      // A chapter's opening page stays clean by design; the header names the
+      // chapter from its second page on (it used to stay frozen on the
+      // abbreviations list for the whole body).
+      assert.equal(report.headers[page(part) - 1], null, `${part}'s opening page has no header`);
+      if (part !== "Identificação") {
+        // (Identificação is two lines long: its next page is a blank pad.)
+        assert.equal(
+          report.headers[page(part)],
+          part.toLocaleUpperCase("pt-PT"),
+          `running header on ${part}'s second page, in the part titles' case`,
+        );
+      }
+    }
+    assert.equal(new Set(parts.map(page)).size, parts.length, "no two chapters share a page");
+    assert.equal(report.passes, 2, "still converges in two passes");
   });
 });
 

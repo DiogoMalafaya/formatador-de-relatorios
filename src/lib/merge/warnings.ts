@@ -6,6 +6,15 @@
 
 import type { FormattingWarning } from "../formatting/warnings.ts";
 
+/** The master's own cover text was dropped because our generated cover replaces it (DIO-45). */
+export function sourceCoverReplacedWarning(): FormattingWarning {
+  return {
+    code: "source-cover-replaced",
+    messagePt:
+      "A capa do teu documento principal foi substituída pela capa escolhida aqui, para não aparecer duas vezes.",
+  };
+}
+
 export function staleTocReplacedWarning(): FormattingWarning {
   return {
     code: "stale-toc-replaced",

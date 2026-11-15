@@ -30,6 +30,11 @@ export interface PaginationInput {
    * is dropped rather than joined by a second one.
    */
   existingBlanks?: ReadonlySet<string>;
+  /**
+   * Marker anchors in the front matter that must also open on a recto — today
+   * the generated Índice's start marker (DIO-45). Each must be in `pages`.
+   */
+  frontRectoMarkers?: readonly string[];
 }
 
 export interface PaginationPlan {
@@ -48,6 +53,8 @@ export interface PaginationPlan {
   totalPages: number;
   /** Predicted final absolute page per heading id (for convergence checks). */
   headingPages: Map<string, number>;
+  /** Predicted final absolute page per recto marker (`frontRectoMarkers`), for locating their blanks. */
+  markerPages: Map<string, number>;
   /**
    * Sequence-local page numbers per heading id, for `fillTocPageNumbers`:
    * roman-sequence headings get their absolute page (the sequence starts at
@@ -79,6 +86,8 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     anchors.push({ anchor, page });
   };
   const partLevel = partHeadingLevel(headings);
+  const frontRectoMarkers = input.frontRectoMarkers ?? [];
+  for (const marker of frontRectoMarkers) push(marker, pages.get(marker));
   push(BODY_START_MARKER_ID, bodyStartRendered);
   for (const heading of headings) {
     if (heading.numbering !== "arabic" || heading.level !== partLevel) continue;
@@ -128,6 +137,12 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     );
   }
 
+  const markerPages = new Map<string, number>();
+  for (const marker of frontRectoMarkers) {
+    const rendered = pages.get(marker);
+    if (rendered !== undefined) markerPages.set(marker, finalPageOf(rendered));
+  }
+
   const stable =
     blankAnchors.length === existingBlanks.size &&
     blankAnchors.every((anchor) => existingBlanks.has(anchor));
@@ -137,6 +152,7 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     bodyStartPage,
     totalPages: totalPages - existingBlankPages.length + blankAnchors.length,
     headingPages,
+    markerPages,
     tocPageNumbers,
     stable,
   };

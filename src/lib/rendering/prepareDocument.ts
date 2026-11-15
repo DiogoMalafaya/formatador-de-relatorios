@@ -101,8 +101,14 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
     extraWarnings: merged.warnings,
   });
 
+  // The merged document's first heading is a front-matter title, so the
+  // name read off the master's own cover (DIO-45) wins over extraction.
   return withCover(
-    { ...formatted, css: `${formatted.css}\n${GENERATED_TOC_CSS}` },
+    {
+      ...formatted,
+      css: `${formatted.css}\n${GENERATED_TOC_CSS}`,
+      extractedCandidateName: merged.candidateName ?? formatted.extractedCandidateName,
+    },
     session,
     { headings: merged.headings },
   );
