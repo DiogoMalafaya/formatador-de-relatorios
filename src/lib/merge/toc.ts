@@ -105,6 +105,7 @@ export function buildTocEntries(
       depth: heading.level,
       text: heading.text,
       numbering: heading.numbering,
+      ...(heading.part ? { part: true } : {}),
     }));
 }
 
@@ -118,7 +119,7 @@ export function renderTocHtml(entries: TocEntry[], options: GenerateTocOptions =
   const items = entries
     .map(
       (entry) =>
-        `<li class="toc-entry toc-depth-${entry.depth}">` +
+        `<li class="toc-entry toc-depth-${entry.depth}${entry.part ? " toc-part" : ""}">` +
         `<span class="toc-entry-text">${escapeHtml(entry.text)}</span>` +
         `<span class="toc-leader"></span>` +
         tocPagePlaceholder(entry.headingId, entry.numbering) +
@@ -148,6 +149,12 @@ export const GENERATED_TOC_CSS = `
 .generated-toc .toc-depth-4 { padding-left: 3em; }
 .generated-toc .toc-depth-5 { padding-left: 4.5em; }
 .generated-toc .toc-depth-6 { padding-left: 6em; }
+
+/* Document structure (DIO-45). Part titles (chapter titles, front-matter
+   titles) share one case wherever they appear, so chapter files typed in
+   different cases still read as one document. Uppercase is the case that
+   needs no guessing: title-casing would mangle acronyms. */
+.part-title, .generated-toc .toc-title, .generated-toc .toc-part .toc-entry-text { text-transform: uppercase; }
 `;
 
 /* -------------------------------- pass 2 ------------------------------- */

@@ -45,6 +45,18 @@ export function buildBodyStartMarker(): string {
   return `<div id="${BODY_START_MARKER_ID}" class="page-map-marker" aria-hidden="true"></div>`;
 }
 
+/** Anchor id of the invisible marker right before the generated Índice (DIO-45). */
+export const TOC_START_MARKER_ID = "dio45-toc-start";
+
+/**
+ * Same 1×1px marker as the body's, opening the Índice on a fresh page and
+ * giving the page map (and the blank-page plan) a handle on where it starts,
+ * so it can be put on a recto.
+ */
+export function buildTocStartMarker(): string {
+  return `<div id="${TOC_START_MARKER_ID}" class="page-map-marker" aria-hidden="true"></div>`;
+}
+
 export const INTENTIONAL_BLANK_TEXT_PT = "Página intencionalmente deixada em branco";
 
 /**
@@ -65,6 +77,10 @@ export const PAGINATION_CSS = `
    part heading deliberately gets no break of its own (see buildPartBreakCss)
    so it flows right after this marker instead of leaving a near-empty page. */
 .page-map-marker { width: 1px; height: 1px; break-before: page; page-break-before: always; }
+/* Every front-matter element starts on its own page (DIO-45). Adjacent forced
+   breaks (the cover's break-after, the Índice's) collapse into one, so this
+   never produces an empty page. */
+.front-matter-title { break-before: page; page-break-before: always; }
 .intentional-blank-page {
   break-before: page;
   page-break-before: always;

@@ -49,6 +49,33 @@ export function buildMasterFixture(): Promise<MergeSource> {
   ]);
 }
 
+/**
+ * The shape all three designer-made reference CVs share (DIO-45): cover
+ * lines, dedication, stale Índice, then front-matter lists *after* the
+ * Índice, then a body section written straight into the master.
+ */
+export function buildMasterWithListsAfterTocFixture(): Promise<MergeSource> {
+  return source("master-lists", [
+    paragraph("Beatriz Fictícia Andrade"),
+    paragraph("Curriculum Vitae"),
+    paragraph("Internato Médico de Medicina Geral e Familiar"),
+    paragraph("Unidade de Saúde Familiar Imaginária, 2026"),
+    heading(1, "Dedicatória"),
+    paragraph("Aos meus orientadores fictícios."),
+    heading(1, "Índice"),
+    paragraph("Identificação ........................ 1"),
+    paragraph("Saúde Materna ........................ 3"),
+    heading(1, "Lista de Abreviaturas e Siglas"),
+    paragraph("USF – Unidade de Saúde Familiar inventada"),
+    heading(1, "Lista de Tabelas"),
+    paragraph("Tabela 1 – Consultas fictícias"),
+    heading(1, "Identificação"),
+    paragraph("Nome: Beatriz Fictícia Andrade"),
+    heading(2, "Contactos"),
+    paragraph("Correio eletrónico: beatriz@exemplo.pt"),
+  ]);
+}
+
 /** A master without any Índice — front matter only. */
 export function buildMasterWithoutTocFixture(): Promise<MergeSource> {
   return source("master-no-toc", [

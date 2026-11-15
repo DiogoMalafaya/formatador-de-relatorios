@@ -35,8 +35,10 @@ import {
   BODY_START_MARKER_ID,
   PAGE_MAP_PROBE_CSS,
   PAGINATION_CSS,
+  TOC_START_MARKER_ID,
   buildBlankPageHtml,
   buildBodyStartMarker,
+  buildTocStartMarker,
   buildHtmlDocument,
   buildPageMapProbeHtml,
 } from "./template.ts";
@@ -64,6 +66,12 @@ export interface PaginatedRenderReport {
   pageLabels: (string | null)[];
   /** 1-based absolute pages occupied by inserted "intencionalmente em branco" pages. */
   blankPages: number[];
+  /** Final 1-based absolute page of each merged heading, by heading id. */
+  headingPages: Record<string, number>;
+  /** Final absolute page where the generated Índice starts, when there is one (DIO-45). */
+  tocStartPage?: number;
+  /** Running-header text per page (null = none), as stamped. */
+  headers: (string | null)[];
   /** Render passes it took to converge (2 in the normal case). */
   passes: number;
   timings: { passMs: number[]; totalMs: number };
@@ -84,10 +92,11 @@ export async function renderPaginatedPdf(
   const { headings } = options;
   const { ruleSet } = document;
 
-  const baseHtml = injectBodyStartMarker(document.html, headings);
+  const baseHtml = injectTocStartMarker(injectBodyStartMarker(document.html, headings));
+  const frontRectoMarkers = baseHtml.includes(buildTocStartMarker()) ? [TOC_START_MARKER_ID] : [];
   const css = [document.css, PAGINATION_CSS, PAGE_MAP_PROBE_CSS, buildPartBreakCss(headings)].join("\n");
-  const probeHtml = buildPageMapProbeHtml([BODY_START_MARKER_ID, ...headings.map((h) => h.id)]);
-  const anchorIds = [BODY_START_MARKER_ID, ...headings.map((h) => h.id)];
+  const anchorIds = [...frontRectoMarkers, BODY_START_MARKER_ID, ...headings.map((h) => h.id)];
+  const probeHtml = buildPageMapProbeHtml(anchorIds);
 
   const passMs: number[] = [];
   const browser = await launchBrowser();
@@ -121,6 +130,7 @@ export async function renderPaginatedPdf(
         pages: map.pages,
         totalPages: map.contentPageCount,
         existingBlanks: new Set(blankCounts.keys()),
+        frontRectoMarkers,
       });
       passMs.push(Date.now() - passStart);
 
@@ -145,8 +155,13 @@ export async function renderPaginatedPdf(
   const bodyStartPage = plan.bodyStartPage;
   const blankPages = resolveBlankPages(blankCounts, plan);
   const pageLabels = buildPageLabels(totalPages, bodyStartPage);
+  // The running header names a part, and part titles render uppercase
+  // (GENERATED_TOC_CSS, DIO-45), so the header matches what the page shows
+  // rather than whatever case the chapter file was typed in.
   const headers = ruleSet.header.allowed
-    ? buildRunningHeaders(headings, plan.headingPages, totalPages, bodyStartPage, new Set(blankPages))
+    ? buildRunningHeaders(headings, plan.headingPages, totalPages, bodyStartPage, new Set(blankPages)).map(
+        (header) => header?.toLocaleUpperCase("pt-PT") ?? null,
+      )
     : new Array<string | null>(totalPages).fill(null);
 
   const pdf = await stripProbeAndStamp(pdfBytes, {
@@ -178,6 +193,11 @@ export async function renderPaginatedPdf(
       bodyStartPage,
       pageLabels,
       blankPages,
+      headingPages: Object.fromEntries(plan.headingPages),
+      ...(plan.markerPages.has(TOC_START_MARKER_ID)
+        ? { tocStartPage: plan.markerPages.get(TOC_START_MARKER_ID) }
+        : {}),
+      headers,
       passes,
       timings: { passMs, totalMs: Date.now() - startedAt },
     },
@@ -187,13 +207,22 @@ export async function renderPaginatedPdf(
 /* ------------------------------ HTML composition ------------------------------ */
 
 /**
- * Puts the invisible body-start marker between the generated Índice and the
- * first body block, so the page map knows where the arabic sequence begins.
- * Falls back to just before the first arabic heading when no generated
- * Índice is present.
+ * Puts the invisible body-start marker right before the first body (arabic)
+ * heading, so the page map knows where the arabic sequence begins. Front
+ * matter that follows the Índice (abbreviations, lists — DIO-45) therefore
+ * stays in the front matter. Falls back to just after the generated Índice,
+ * then to the end, when there is no body heading.
  */
 export function injectBodyStartMarker(html: string, headings: readonly MergedHeading[]): string {
   const marker = buildBodyStartMarker();
+
+  const firstArabic = headings.find((heading) => heading.numbering === "arabic");
+  if (firstArabic) {
+    const headingIndex = html.search(headingOpenTagPattern(firstArabic.id));
+    if (headingIndex !== -1) {
+      return `${html.slice(0, headingIndex)}${marker}\n${html.slice(headingIndex)}`;
+    }
+  }
 
   const navStart = html.indexOf('<nav class="generated-toc">');
   if (navStart !== -1) {
@@ -204,16 +233,21 @@ export function injectBodyStartMarker(html: string, headings: readonly MergedHea
     }
   }
 
-  const firstArabic = headings.find((heading) => heading.numbering === "arabic");
-  if (firstArabic) {
-    const headingIndex = html.search(headingOpenTagPattern(firstArabic.id));
-    if (headingIndex !== -1) {
-      return `${html.slice(0, headingIndex)}${marker}\n${html.slice(headingIndex)}`;
-    }
-  }
-
   return `${html}\n${marker}`;
 }
+
+/** Puts the Índice's start marker right before the generated Índice, when there is one. */
+export function injectTocStartMarker(html: string): string {
+  const navStart = html.indexOf('<nav class="generated-toc">');
+  if (navStart === -1) return html;
+  return `${html.slice(0, navStart)}${buildTocStartMarker()}\n${html.slice(navStart)}`;
+}
+
+/** Marker anchors and the exact HTML that stands for each in the composed document. */
+const MARKER_HTML: Readonly<Record<string, string>> = {
+  [BODY_START_MARKER_ID]: buildBodyStartMarker(),
+  [TOC_START_MARKER_ID]: buildTocStartMarker(),
+};
 
 /** Every level-1 body heading (major part) starts on a fresh page, like the reference volume. */
 /**
@@ -243,8 +277,9 @@ function composePassHtml(
 
   for (const [anchor, count] of blankCounts) {
     const blanks = Array.from({ length: count }, buildBlankPageHtml).join("\n");
-    if (anchor === BODY_START_MARKER_ID) {
-      html = html.replace(buildBodyStartMarker(), `${blanks}\n${buildBodyStartMarker()}`);
+    const markerHtml = MARKER_HTML[anchor];
+    if (markerHtml) {
+      html = html.replace(markerHtml, `${blanks}\n${markerHtml}`);
     } else {
       const index = html.search(headingOpenTagPattern(anchor));
       if (index !== -1) {
@@ -271,11 +306,18 @@ function mapsEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number
 /** Final absolute pages occupied by inserted blanks: the `count` pages right before each blanked anchor. */
 function resolveBlankPages(
   blankCounts: ReadonlyMap<string, number>,
-  plan: { bodyStartPage: number; headingPages: ReadonlyMap<string, number> },
+  plan: {
+    bodyStartPage: number;
+    headingPages: ReadonlyMap<string, number>;
+    markerPages: ReadonlyMap<string, number>;
+  },
 ): number[] {
   const pages: number[] = [];
   for (const [anchor, count] of blankCounts) {
-    const anchorPage = anchor === BODY_START_MARKER_ID ? plan.bodyStartPage : plan.headingPages.get(anchor);
+    const anchorPage =
+      anchor === BODY_START_MARKER_ID
+        ? plan.bodyStartPage
+        : (plan.markerPages.get(anchor) ?? plan.headingPages.get(anchor));
     if (anchorPage === undefined) continue;
     for (let i = 1; i <= count; i += 1) {
       pages.push(anchorPage - i);

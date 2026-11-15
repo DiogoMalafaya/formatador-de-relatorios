@@ -6,7 +6,7 @@ import {
   planPagination,
   sectionSpan,
 } from "./paginate.ts";
-import { BODY_START_MARKER_ID } from "./template.ts";
+import { BODY_START_MARKER_ID, TOC_START_MARKER_ID } from "./template.ts";
 import type { MergedHeading } from "../merge/types.ts";
 
 /**
@@ -25,6 +25,63 @@ function bodyHeading(id: string, level = 1, text = id): MergedHeading {
 }
 
 describe("planPagination", () => {
+  describe("Índice on a recto (DIO-45)", () => {
+    test("puts a blank before an Índice that would start on a verso, and shifts the body with it", () => {
+      const headings = [frontHeading("dedicatoria"), frontHeading("abreviaturas"), bodyHeading("parte-1")];
+      const pages = new Map([
+        ["dedicatoria", 2],
+        [TOC_START_MARKER_ID, 2],
+        ["abreviaturas", 4],
+        [BODY_START_MARKER_ID, 5],
+        ["parte-1", 5],
+      ]);
+      // Dedication shares page 2 with the Índice marker here only to keep the
+      // map small: what matters is that the marker sits on an even page.
+      const plan = planPagination({
+        headings,
+        pages,
+        totalPages: 20,
+        frontRectoMarkers: [TOC_START_MARKER_ID],
+      });
+
+      assert.deepEqual(plan.blankAnchors, [TOC_START_MARKER_ID, BODY_START_MARKER_ID]);
+      assert.equal(plan.markerPages.get(TOC_START_MARKER_ID), 3);
+      assert.equal(plan.bodyStartPage, 7, "the Índice's blank pushes the body onto a verso, so it gets one too");
+    });
+
+    test("is a fixed point: feeding the plan's own blanks back reproduces it", () => {
+      const headings = [frontHeading("abreviaturas"), bodyHeading("parte-1")];
+      const first = planPagination({
+        headings,
+        pages: new Map([
+          [TOC_START_MARKER_ID, 2],
+          ["abreviaturas", 3],
+          [BODY_START_MARKER_ID, 4],
+          ["parte-1", 4],
+        ]),
+        totalPages: 10,
+        frontRectoMarkers: [TOC_START_MARKER_ID],
+      });
+      assert.deepEqual(first.blankAnchors, [TOC_START_MARKER_ID]);
+
+      // The render with that blank in place: everything one page later.
+      const second = planPagination({
+        headings,
+        pages: new Map([
+          [TOC_START_MARKER_ID, 3],
+          ["abreviaturas", 4],
+          [BODY_START_MARKER_ID, 5],
+          ["parte-1", 5],
+        ]),
+        totalPages: 11,
+        existingBlanks: new Set(first.blankAnchors),
+        frontRectoMarkers: [TOC_START_MARKER_ID],
+      });
+      assert.deepEqual(second.blankAnchors, first.blankAnchors);
+      assert.equal(second.stable, true);
+    });
+  });
+
   test("leaves geometry alone when the body already starts on a recto page", () => {
     const headings = [frontHeading("indice"), bodyHeading("parte-1")];
     const pages = new Map([

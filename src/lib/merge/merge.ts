@@ -4,9 +4,12 @@
  * Concatenates the documento principal and the ordered chapter files into one
  * `ParsedDocument`-shaped model:
  *
- *   1. The master's front matter (everything up to and including its Índice,
- *      when one is detected) is split out; a stale Índice is removed and its
- *      position taken by the generated one.
+ *   1. The master's own cover text is dropped (our cover replaces it) and
+ *      its front matter split out: everything up to its Índice, plus any
+ *      leading front-matter sections after it (abbreviations, lists…, see
+ *      `frontMatter.ts`, DIO-45). A stale Índice is removed and its position
+ *      taken by the generated one. The rest of the master is body, demoted
+ *      to chapter level like any chapter file.
  *   2. Each chapter's top heading is demoted to its assigned depth so it slots
  *      into the section hierarchy instead of becoming a new H1, preserving the
  *      file's internal heading hierarchy relative to its top.
@@ -29,7 +32,8 @@ import {
 } from "./blocks.ts";
 import type { HtmlBlock } from "./blocks.ts";
 import { buildTocEntries, detectStaleToc, renderTocHtml } from "./toc.ts";
-import { staleTocReplacedWarning } from "./warnings.ts";
+import { detectSourceCover, splitMasterAfterToc } from "./frontMatter.ts";
+import { sourceCoverReplacedWarning, staleTocReplacedWarning } from "./warnings.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { ParsedDocument } from "../formatting/parseDocx.ts";
 import type {
@@ -70,68 +74,90 @@ export function mergeDocuments(
 
   const assignHeadingId = () => `${headingIdPrefix}-${nextHeadingIndex++}`;
 
-  // --- master: split front matter from anything after its Índice ---------
-  const masterBlocks = splitTopLevelBlocks(master.document.html);
+  // --- master: drop its cover, split front matter from body ---------------
+  let masterBlocks = splitTopLevelBlocks(master.document.html);
+
+  // Our generated cover replaces the master's own; keep its name line, since
+  // the first heading of a merged CV is a front-matter title, not the name.
+  const sourceCover = detectSourceCover(masterBlocks);
+  if (sourceCover) {
+    masterBlocks = masterBlocks.slice(sourceCover.blockCount);
+    warnings.push(sourceCoverReplacedWarning());
+  }
+
   const staleToc = detectStaleToc(masterBlocks);
 
   let frontMatterBlocks: HtmlBlock[];
-  let masterBodyBlocks: HtmlBlock[];
+  let afterTocFrontMatterBlocks: HtmlBlock[] = [];
+  let masterBodyBlocks: HtmlBlock[] = [];
   if (staleToc) {
     frontMatterBlocks = masterBlocks.slice(0, staleToc.startIndex);
-    masterBodyBlocks = masterBlocks.slice(staleToc.endIndex + 1);
+    const split = splitMasterAfterToc(masterBlocks.slice(staleToc.endIndex + 1));
+    afterTocFrontMatterBlocks = split.frontMatter;
+    masterBodyBlocks = split.body;
     warnings.push(staleTocReplacedWarning());
   } else {
     frontMatterBlocks = masterBlocks;
-    masterBodyBlocks = [];
   }
 
-  const frontMatterHtml = emitBlocks(frontMatterBlocks, {
-    sourceId: master.id,
-    numbering: "roman",
-    levelShift: 0,
-    minLevel: 1,
-    headings,
-    assignHeadingId,
-  });
+  const frontMatter = (blocks: HtmlBlock[]) =>
+    emitBlocks(blocks, {
+      sourceId: master.id,
+      numbering: "roman",
+      levelShift: 0,
+      minLevel: 1,
+      partLevel: 1,
+      headings,
+      assignHeadingId,
+    });
 
-  const masterBodyHtml = emitBlocks(masterBodyBlocks, {
-    sourceId: master.id,
-    numbering: "arabic",
-    levelShift: 0,
-    minLevel: 1,
-    headings,
-    assignHeadingId,
-  });
-
-  // --- chapters: demote each file's tree to its assigned depth ------------
-  const chapterHtmlParts = chapters.map((chapter) => {
-    const depth = options.chapterDepthOverrides?.[chapter.id] ?? options.chapterDepth ?? DEFAULT_CHAPTER_DEPTH;
-    const targetLevel = clamp(depth, 1, MAX_HEADING_LEVEL - 1) + 1;
-
-    const blocks = splitTopLevelBlocks(chapter.document.html);
-    const topHeadingLevel = blocks
+  /**
+   * Body content is demoted so its top heading sits at the chapter level, so
+   * every chapter (including body sections written into the master) shares
+   * one level and therefore one notion of "major part" (DIO-45).
+   */
+  const chapterLevelFor = (sourceId: string) => {
+    const depth = options.chapterDepthOverrides?.[sourceId] ?? options.chapterDepth ?? DEFAULT_CHAPTER_DEPTH;
+    return clamp(depth, 1, MAX_HEADING_LEVEL - 1) + 1;
+  };
+  const bodyPart = (sourceId: string, blocks: HtmlBlock[]) => {
+    const targetLevel = chapterLevelFor(sourceId);
+    const levels = blocks
       .map((block) => headingLevelOf(block.tag))
-      .find((level) => level !== undefined);
+      .filter((level): level is number => level !== undefined);
+    // The shallowest heading anchors the demotion. For a chapter file that's
+    // normally its first heading; a file opening on an h2 then an h1 still
+    // slots in at the chapter level.
+    const topHeadingLevel = levels.length > 0 ? Math.min(...levels) : undefined;
 
     return emitBlocks(blocks, {
-      sourceId: chapter.id,
+      sourceId,
       numbering: "arabic",
-      // A chapter without any heading has nothing to demote; its content
-      // still merges verbatim.
+      // A part without any heading has nothing to demote; its content still
+      // merges verbatim.
       levelShift: topHeadingLevel === undefined ? 0 : targetLevel - topHeadingLevel,
       // Headings shallower than the file's top heading cannot escape the
       // chapter's subtree.
       minLevel: topHeadingLevel === undefined ? 1 : targetLevel,
+      partLevel: targetLevel,
       headings,
       assignHeadingId,
     });
-  });
+  };
 
-  // --- generated Índice at the stale TOC's position (end of front matter) -
+  // Emission order is document order, so `headings` stays in document order.
+  const frontMatterHtml = frontMatter(frontMatterBlocks);
+  const afterTocFrontMatterHtml = frontMatter(afterTocFrontMatterBlocks);
+  const masterBodyHtml = bodyPart(master.id, masterBodyBlocks);
+  const chapterHtmlParts = chapters.map((chapter) =>
+    bodyPart(chapter.id, splitTopLevelBlocks(chapter.document.html)),
+  );
+
+  // --- generated Índice at the stale TOC's position -----------------------
   const tocEntries = buildTocEntries(headings, { maxLevel: options.tocMaxLevel });
   const tocHtml = renderTocHtml(tocEntries);
 
-  const mergedHtml = [frontMatterHtml, tocHtml, masterBodyHtml, ...chapterHtmlParts]
+  const mergedHtml = [frontMatterHtml, tocHtml, afterTocFrontMatterHtml, masterBodyHtml, ...chapterHtmlParts]
     .filter((part) => part.length > 0)
     .join("\n");
 
@@ -154,6 +180,7 @@ export function mergeDocuments(
     replacedStaleToc: staleToc !== undefined,
     warnings,
     passthrough: false,
+    ...(sourceCover?.candidateName ? { candidateName: sourceCover.candidateName } : {}),
   };
 }
 
@@ -164,6 +191,8 @@ interface EmitContext {
   levelShift: number;
   /** Floor for shifted heading levels (a chapter's assigned level). */
   minLevel: number;
+  /** Headings landing on this level are part titles (chapter/front-matter titles). */
+  partLevel: number;
   headings: MergedHeading[];
   assignHeadingId: () => string;
 }
@@ -179,21 +208,34 @@ function emitBlocks(blocks: HtmlBlock[], context: EmitContext): string {
 
     const newLevel = clamp(Math.max(context.minLevel, level + context.levelShift), 1, MAX_HEADING_LEVEL);
     const id = context.assignHeadingId();
+    const part = newLevel === context.partLevel;
     context.headings.push({
       id,
       level: newLevel,
       text: blockText(block.html),
       sourceId: context.sourceId,
       numbering: context.numbering,
+      part,
     });
-    return rewriteHeadingBlock(block.html, newLevel, id);
+    const classes = part
+      ? context.numbering === "roman"
+        ? [PART_TITLE_CLASS, FRONT_MATTER_TITLE_CLASS]
+        : [PART_TITLE_CLASS]
+      : [];
+    return rewriteHeadingBlock(block.html, newLevel, id, classes);
   });
   return parts.join("\n");
 }
 
-function rewriteHeadingBlock(html: string, newLevel: number, id: string): string {
+/** Part titles carry a class so themes can treat them as one family (case, breaks). */
+export const PART_TITLE_CLASS = "part-title";
+/** Front-matter part titles additionally start their own page (DIO-45). */
+export const FRONT_MATTER_TITLE_CLASS = "front-matter-title";
+
+function rewriteHeadingBlock(html: string, newLevel: number, id: string, classes: string[]): string {
+  const classAttr = classes.length > 0 ? ` class="${classes.join(" ")}"` : "";
   return html
-    .replace(/^<h[1-6]/i, `<h${newLevel} id="${id}"`)
+    .replace(/^<h[1-6]/i, `<h${newLevel} id="${id}"${classAttr}`)
     .replace(/<\/h[1-6]>\s*$/i, `</h${newLevel}>`);
 }
 

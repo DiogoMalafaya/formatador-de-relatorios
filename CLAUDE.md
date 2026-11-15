@@ -153,6 +153,19 @@ why DIO-40/41/42 exist.
   assignment is **still an open product question** (PRD §12 Q2) — the API
   supports both, only the UI commits.
 - A stale Índice in the master is detected and replaced, with a pt-PT warning.
+- **Master classification** (`merge/frontMatter.ts`, DIO-45):
+  - The master's own cover lines are dropped, since our cover replaces them. A
+    run of short lines saying "Curriculum Vitae" counts as a cover; without
+    that phrase nothing is dropped. The name is taken from the cover
+    (`MergeResult.candidateName`), because a merged CV's first heading is a
+    front-matter title.
+  - Leading front-matter sections after the Índice (abbreviations, lists,
+    nota prévia, agradecimentos) stay roman front matter.
+  - The rest of the master is body, demoted to chapter level like any chapter
+    file, so every body part shares one level.
+  - Part titles carry `class="part-title"` and render uppercase, both in the
+    headings and in the Índice. Front-matter part titles also carry
+    `front-matter-title`, which starts them on their own page.
 - **A missing source file fails the render loudly.** Silently rendering without
   a chapter would hand the candidate an incomplete CV that still looks finished.
 
@@ -175,7 +188,9 @@ why DIO-40/41/42 exist.
   pdf-lib *after* the final print, because Chromium's own footer template can
   only produce a single arabic sequence.
 - **Blank pages** ("página intencionalmente deixada em branco") are inserted so
-  the body and each major part open on a recto page.
+  the Índice, the body and each major part open on a recto page. The Índice
+  gets the same treatment as the body: a 1px marker (`TOC_START_MARKER_ID`)
+  passed to the planner as a `frontRectoMarker`.
 - **Exact-count validations:** the profile's page cap and its summary-section cap are
   checked against the real page count, superseding the estimate for a paginated
   render. Results land on the session record (`artifacts.renderWarnings`,
@@ -198,6 +213,9 @@ Three invariants in `paginate.ts` are easy to break and were each a real bug:
    and the first part heading deliberately gets none (or it would leave a page
    holding just the 1px marker). Without this the body shares the front
    matter's last page and an inserted blank shifts it by two pages, not one.
+   The marker sits right before the **first arabic heading**, not right after
+   the Índice. Otherwise front matter placed after the Índice becomes body
+   page 1, and its `<h1>` becomes the only "major part" (DIO-45).
 
 ## Frontend
 
@@ -257,7 +275,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **300 tests passing** on `main`. Some suites launch a real
+Current baseline: **329 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions

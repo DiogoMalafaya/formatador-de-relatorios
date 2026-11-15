@@ -15,6 +15,8 @@ export type FormattingWarningCode =
   | "page-limit-possibly-exceeded"
   /** Emitted by the merge engine (`src/lib/merge/warnings.ts`, DIO-41). */
   | "stale-toc-replaced"
+  /** Emitted by the merge engine (DIO-45) when the master's own cover is dropped. */
+  | "source-cover-replaced"
   /** Exact-count variants, emitted by the two-pass render (DIO-42) once a real page map exists. */
   | "page-limit-exceeded"
   | "summary-section-too-long";
