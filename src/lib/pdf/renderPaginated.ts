@@ -19,8 +19,6 @@
  * invocation; no intermediate state is persisted anywhere.
  */
 
-import { PDFDocument, StandardFonts } from "pdf-lib";
-import type { PDFFont, PDFPage } from "pdf-lib";
 import { launchBrowser } from "./browser.ts";
 import { extractPageMap } from "./pageMap.ts";
 import {
@@ -46,6 +44,8 @@ import { fillTocPageNumbers } from "../merge/toc.ts";
 import type { MergedHeading } from "../merge/types.ts";
 import { pageLimitExceededWarning, summaryTooLongWarning } from "../formatting/warnings.ts";
 import { printMargins } from "../formatting/ruleSet.ts";
+import { serveEmbeddedFonts } from "./fonts.ts";
+import { stampPages } from "./stamp.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 
@@ -108,6 +108,7 @@ export async function renderPaginatedPdf(
 
   try {
     const page = await browser.newPage();
+    await serveEmbeddedFonts(page);
 
     for (;;) {
       passes += 1;
@@ -115,6 +116,9 @@ export async function renderPaginatedPdf(
 
       const html = composePassHtml(baseHtml, tocNumbers, blankCounts, probeHtml);
       await page.setContent(buildHtmlDocument({ ...document, html, css }), { waitUntil: "load" });
+      // Embedded faces load asynchronously; printing (and measuring the page
+      // map) before they're ready would paginate in a fallback font.
+      await page.evaluate(() => globalThis.document.fonts.ready);
       pdfBytes = Buffer.from(
         await page.pdf({
           format: "A4",
@@ -164,11 +168,12 @@ export async function renderPaginatedPdf(
       )
     : new Array<string | null>(totalPages).fill(null);
 
-  const pdf = await stripProbeAndStamp(pdfBytes, {
+  const pdf = await stampPages(pdfBytes, {
     contentPageCount: totalPages,
     pageLabels,
     headers,
     candidateName: options.candidateName,
+    fontFamily: document.fontFamily,
     includeCandidateName: ruleSet.footer.includeCandidateName,
     includePageNumber: ruleSet.footer.includePageNumber,
   });
@@ -324,76 +329,4 @@ function resolveBlankPages(
     }
   }
   return pages.sort((a, b) => a - b);
-}
-
-/* ------------------------------ pdf-lib stamping ------------------------------ */
-
-interface StampOptions {
-  contentPageCount: number;
-  pageLabels: (string | null)[];
-  headers: (string | null)[];
-  candidateName: string;
-  includeCandidateName: boolean;
-  includePageNumber: boolean;
-}
-
-const FOOTER_FONT_SIZE = 9;
-const FOOTER_BASELINE_Y = 35;
-const HEADER_FONT_SIZE = 9;
-const HEADER_TOP_OFFSET = 42;
-
-async function stripProbeAndStamp(pdfBytes: Buffer, options: StampOptions): Promise<Buffer> {
-  const doc = await PDFDocument.load(pdfBytes);
-
-  while (doc.getPageCount() > options.contentPageCount) {
-    doc.removePage(doc.getPageCount() - 1);
-  }
-
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const name = options.includeCandidateName ? sanitizeForWinAnsi(options.candidateName) : "";
-
-  doc.getPages().forEach((page, index) => {
-    const label = options.pageLabels[index];
-    if (label !== null && label !== undefined) {
-      const parts: string[] = [];
-      if (name.length > 0) parts.push(name);
-      if (options.includePageNumber) parts.push(label);
-      if (parts.length > 0) {
-        drawCentered(page, font, parts.join(" — "), FOOTER_FONT_SIZE, FOOTER_BASELINE_Y);
-      }
-    }
-
-    const header = options.headers[index];
-    if (header) {
-      const text = sanitizeForWinAnsi(header);
-      if (text.length > 0) {
-        drawCentered(page, font, text, HEADER_FONT_SIZE, page.getHeight() - HEADER_TOP_OFFSET);
-      }
-    }
-  });
-
-  return Buffer.from(await doc.save());
-}
-
-function drawCentered(page: PDFPage, font: PDFFont, text: string, size: number, y: number): void {
-  const width = font.widthOfTextAtSize(text, size);
-  page.drawText(text, {
-    x: (page.getWidth() - width) / 2,
-    y,
-    size,
-    font,
-  });
-}
-
-/**
- * Helvetica is WinAnsi-encoded, which covers all of pt-PT (ã, ç, é, …) but
- * not arbitrary Unicode. Characters outside it are dropped rather than
- * letting the whole render throw over an unusual glyph in a heading.
- */
-function sanitizeForWinAnsi(text: string): string {
-  return text
-    .replace(/[‐-‒]/g, "-")
-    .replace(/[^\x20-\x7E -ÿ–—‘’‚“”„†‡•…€™]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }

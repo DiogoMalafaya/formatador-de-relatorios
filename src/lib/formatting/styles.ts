@@ -9,6 +9,7 @@
  */
 
 import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
+import { fontFaceCss, fontStack as embeddedFontStack } from "../pdf/fonts.ts";
 
 export interface RuleSetChoices {
   fontFamily: FontFamily;
@@ -32,9 +33,13 @@ export function resolveChoices(
 }
 
 export function buildRuleSetCss(ruleSet: RuleSet, choices: RuleSetChoices): string {
-  const fontStack = `"${choices.fontFamily}", ${genericFallback(choices.fontFamily)}`;
+  // The norm's font, embedded from files we ship (DIO-46): serverless
+  // Chromium has none of Arial, Times New Roman or Verdana installed.
+  const fontStack = embeddedFontStack(choices.fontFamily);
 
   return `
+${fontFaceCss(choices.fontFamily)}
+
 @page {
   size: A4;
   margin: ${ruleSet.margins.topCm}cm ${ruleSet.margins.rightCm}cm ${ruleSet.margins.bottomCm}cm ${ruleSet.margins.leftCm}cm;
@@ -66,8 +71,4 @@ table {
   border-collapse: collapse;
 }
 `.trim();
-}
-
-function genericFallback(fontFamily: FontFamily): string {
-  return fontFamily === "Times New Roman" ? "serif" : "sans-serif";
 }
