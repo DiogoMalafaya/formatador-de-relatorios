@@ -14,10 +14,21 @@ function formatPtNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
 }
 
+function formatMarginsPt(margins: RuleSet["margins"]): string {
+  const { topCm, rightCm, bottomCm, leftCm } = margins;
+  if (topCm === rightCm && topCm === bottomCm && topCm === leftCm) {
+    return `${formatPtNumber(topCm)}cm`;
+  }
+  if (topCm === bottomCm && leftCm === rightCm) {
+    return `${formatPtNumber(topCm)}cm (sup./inf.), ${formatPtNumber(leftCm)}cm (esq./dir.)`;
+  }
+  return [topCm, rightCm, bottomCm, leftCm].map((cm) => `${formatPtNumber(cm)}cm`).join(" ");
+}
+
 export function formatFormattingSummaryPt(ruleSet: RuleSet): string {
   const parts = [
     `Fonte: ${ruleSet.font.family.default} ${formatPtNumber(ruleSet.font.sizePt)}pt`,
-    `Margens: ${formatPtNumber(ruleSet.marginsCm)}cm`,
+    `Margens: ${formatMarginsPt(ruleSet.margins)}`,
     `Espaçamento: ${formatPtNumber(ruleSet.lineSpacing)}`,
   ];
   return parts.join(" · ");

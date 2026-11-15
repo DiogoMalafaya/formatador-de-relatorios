@@ -4,13 +4,13 @@ import { PDFDocument } from "pdf-lib";
 import { applyWatermark, PREVIEW_WATERMARK_TEXT } from "./watermark.ts";
 import { renderPdf } from "../pdf/render.ts";
 import { applyFormatting } from "../formatting/apply.ts";
-import { GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
+import { HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { buildDocx, heading, longParagraphs, paragraph } from "../formatting/testFixtures.ts";
 
 describe("applyWatermark", () => {
   test("adds a fixed-position overlay that repeats on every printed page", async () => {
     const buffer = await buildDocx([paragraph("Texto simples.")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
 
     const watermarked = applyWatermark(document);
 
@@ -38,7 +38,7 @@ describe("applyWatermark", () => {
 
   test("a multi-page watermarked document still renders a valid PDF", async () => {
     const buffer = await buildDocx(longParagraphs(90, 400));
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
     const watermarked = applyWatermark(document);
 
     const pdf = await renderPdf(watermarked, { candidateName: "Maria Silva" });
@@ -48,7 +48,7 @@ describe("applyWatermark", () => {
 
   test("default watermark text is the pt-PT preview label", async () => {
     const buffer = await buildDocx([heading(1, "Formação")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
     const watermarked = applyWatermark(document);
     const base64 = watermarked.css.match(/base64,([^"]+)"/)?.[1];
     const decoded = Buffer.from(base64!, "base64").toString("utf-8");

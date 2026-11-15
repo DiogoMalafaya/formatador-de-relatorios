@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { mergeCoverWithDocument } from "./merge.ts";
 import { COVER_TEMPLATES } from "./templates.ts";
 import { applyFormatting } from "../formatting/apply.ts";
-import { GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
+import { HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { buildDocx, heading, paragraph } from "../formatting/testFixtures.ts";
 
 describe("mergeCoverWithDocument", () => {
   test("prepends the cover as a distinct, page-broken section before the CV body", async () => {
     const buffer = await buildDocx([heading(1, "Ana Pereira"), paragraph("Experiência profissional.")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
 
     const merged = mergeCoverWithDocument(document, { candidateName: document.extractedCandidateName });
 
@@ -22,7 +22,7 @@ describe("mergeCoverWithDocument", () => {
 
   test("falls back to a placeholder name when none was extracted", async () => {
     const buffer = await buildDocx([paragraph("Texto sem nome óbvio à cabeça, com bastantes palavras para não parecer um nome próprio de todo.")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
 
     const merged = mergeCoverWithDocument(document, { candidateName: document.extractedCandidateName });
 
@@ -31,7 +31,7 @@ describe("mergeCoverWithDocument", () => {
 
   test("escapes a candidate name pulled from the document before it reaches the HTML", async () => {
     const buffer = await buildDocx([heading(1, "<script>alert(1)</script>")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
 
     const merged = mergeCoverWithDocument(document, { candidateName: document.extractedCandidateName });
 
@@ -41,7 +41,7 @@ describe("mergeCoverWithDocument", () => {
 
   test("falls back to the first template for an unknown coverId", async () => {
     const buffer = await buildDocx([heading(1, "Nome Teste")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
 
     const merged = mergeCoverWithDocument(document, { coverId: "does-not-exist" });
 
@@ -50,7 +50,7 @@ describe("mergeCoverWithDocument", () => {
 
   test("selects the requested cover template", async () => {
     const buffer = await buildDocx([heading(1, "Nome Teste")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
     const target = COVER_TEMPLATES[1];
 
     const merged = mergeCoverWithDocument(document, { coverId: target.id });
@@ -60,7 +60,7 @@ describe("mergeCoverWithDocument", () => {
 
   test("preserves the rest of the FormattedDocument shape", async () => {
     const buffer = await buildDocx([heading(1, "Nome Teste")]);
-    const document = await applyFormatting(buffer, { ruleSetId: GENERIC_RULE_SET_ID });
+    const document = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
 
     const merged = mergeCoverWithDocument(document);
 

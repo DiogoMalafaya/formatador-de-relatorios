@@ -37,7 +37,7 @@ export function buildRuleSetCss(ruleSet: RuleSet, choices: RuleSetChoices): stri
   return `
 @page {
   size: A4;
-  margin: ${ruleSet.marginsCm}cm;
+  margin: ${ruleSet.margins.topCm}cm ${ruleSet.margins.rightCm}cm ${ruleSet.margins.bottomCm}cm ${ruleSet.margins.leftCm}cm;
 }
 
 body {
@@ -69,5 +69,5 @@ table {
 }
 
 function genericFallback(fontFamily: FontFamily): string {
-  return fontFamily === "Arial" ? "sans-serif" : "serif";
+  return fontFamily === "Times New Roman" ? "serif" : "sans-serif";
 }

@@ -6,7 +6,7 @@ import { extractPageMap } from "./pageMap.ts";
 import { mergeDocuments } from "../merge/index.ts";
 import { parseDocxDocument } from "../formatting/parseDocx.ts";
 import { formatParsedDocument } from "../formatting/apply.ts";
-import { GENERIC_RULE_SET_ID } from "../formatting/ruleSet.ts";
+import { HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { buildDocx, heading, longParagraphs, paragraph } from "../formatting/testFixtures.ts";
 import type { MergeSource } from "../merge/types.ts";
 
@@ -51,7 +51,7 @@ async function mergedFixture() {
   ];
 
   const merged = mergeDocuments(master, chapters);
-  const document = formatParsedDocument(merged.document, { ruleSetId: GENERIC_RULE_SET_ID }, {
+  const document = formatParsedDocument(merged.document, { ruleSetId: HOUSE_RULE_SET_ID }, {
     extraWarnings: merged.warnings,
   });
 
@@ -129,14 +129,14 @@ describe("renderPaginatedPdf", () => {
 
   test("flags an over-long document with the exact count, not an estimate", async () => {
     const master = await source("master", [heading(1, "Ana Pereira"), paragraph("Curriculum Vitae.")]);
-    // Deliberately enormous: the generic rule set caps at 80 pages.
+    // Deliberately enormous: MFR caps at 100 pages (amendment of 3.12.2018).
     const chapter = await source("gigante", [
       heading(1, "Casuística"),
-      ...longParagraphs(320, 140),
+      ...longParagraphs(400, 140),
     ]);
 
     const merged = mergeDocuments(master, [chapter]);
-    const document = formatParsedDocument(merged.document, { ruleSetId: GENERIC_RULE_SET_ID }, {
+    const document = formatParsedDocument(merged.document, { ruleSetId: "mfr" }, {
       extraWarnings: merged.warnings,
     });
 
@@ -146,7 +146,7 @@ describe("renderPaginatedPdf", () => {
     });
 
     const limit = result.warnings.find((warning) => warning.code === "page-limit-exceeded");
-    assert.ok(limit, "an 80-page breach must be reported once the real count is known");
+    assert.ok(limit, "a breach of the 100-page cap must be reported once the real count is known");
     assert.match(limit.messagePt, new RegExp(String(result.report.totalPages)));
   });
 });

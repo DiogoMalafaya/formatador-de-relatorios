@@ -1,4 +1,7 @@
 .summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   max-width: 70ch;
   padding: var(--space-4);
   font: var(--type-body-sm);
@@ -6,4 +9,24 @@
   background-color: var(--sage-100);
   border-radius: var(--radius-md);
   overflow-wrap: break-word;
+}
+
+.summary p {
+  margin: 0;
+}
+
+.provenance {
+  font-weight: 600;
+}
+
+.sources {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sources a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

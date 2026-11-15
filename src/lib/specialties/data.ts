@@ -9,29 +9,30 @@
  * it directly rather than waiting, since a wrong or incomplete list is the
  * bigger trust risk.
  *
- * Per decision D1, every specialty resolves to the generic rule set at
- * launch — `ruleSetId` is the extension seam for US10, populated only once a
- * specialty's Colégio norms have actually been extracted and encoded
- * (DIO-10). Undefined means "use the generic rule set," not "not supported."
+ * `ruleSetId` points at the specialty's sourced norm profile
+ * (`formatting/ruleSet.ts`, DIO-43). Undefined means no profile has been
+ * sourced yet: such a specialty gets the Lauda house standard, never another
+ * Colégio's norms. Restricting the catalogue to specialties *with* a profile
+ * is DIO-44.
  */
 
 export interface Specialty {
   id: string;
   /** pt-PT display name, exactly as published by the Colégio. */
   name: string;
-  /** Set once a per-specialty rule set exists. Falls back to generic when absent. */
+  /** The specialty's norm profile; absent → the Lauda house standard. */
   ruleSetId?: string;
 }
 
 /** Already alphabetically ordered by `name`, per the AC — keep it that way when editing. */
 export const SPECIALTIES: readonly Specialty[] = [
   { id: "anatomia-patologica", name: "Anatomia Patológica" },
-  { id: "anestesiologia", name: "Anestesiologia" },
+  { id: "anestesiologia", name: "Anestesiologia", ruleSetId: "anestesiologia" },
   { id: "angiologia-e-cirurgia-vascular", name: "Angiologia e Cirurgia Vascular" },
   { id: "cardiologia", name: "Cardiologia" },
   { id: "cardiologia-pediatrica", name: "Cardiologia Pediátrica" },
   { id: "cirurgia-cardio-toracica", name: "Cirurgia Cardio-Torácica" },
-  { id: "cirurgia-geral", name: "Cirurgia Geral" },
+  { id: "cirurgia-geral", name: "Cirurgia Geral", ruleSetId: "cirurgia-geral" },
   { id: "cirurgia-maxilo-facial", name: "Cirurgia Maxilo-facial" },
   { id: "cirurgia-pediatrica", name: "Cirurgia Pediátrica" },
   { id: "cirurgia-plastica-e-reconstrutiva-e-estetica", name: "Cirurgia Plástica e Reconstrutiva e Estética" },
@@ -60,12 +61,12 @@ export const SPECIALTIES: readonly Specialty[] = [
   { id: "neuro-cirurgia", name: "Neuro-Cirurgia" },
   { id: "neurologia", name: "Neurologia" },
   { id: "neuro-radiologia", name: "Neuro-Radiologia" },
-  { id: "oftalmologia", name: "Oftalmologia" },
+  { id: "oftalmologia", name: "Oftalmologia", ruleSetId: "oftalmologia" },
   { id: "oncologia-medica", name: "Oncologia Médica" },
-  { id: "ortopedia", name: "Ortopedia" },
+  { id: "ortopedia", name: "Ortopedia", ruleSetId: "ortopedia" },
   { id: "otorrinolaringologia", name: "Otorrinolaringologia" },
   { id: "patologia-clinica", name: "Patologia Clínica" },
-  { id: "pediatria", name: "Pediatria" },
+  { id: "pediatria", name: "Pediatria", ruleSetId: "pediatria" },
   { id: "pneumologia", name: "Pneumologia" },
   { id: "psiquiatria", name: "Psiquiatria" },
   { id: "psiquiatria-da-infancia-e-da-adolescencia", name: "Psiquiatria da Infância e da Adolescência" },

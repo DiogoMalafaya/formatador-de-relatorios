@@ -61,7 +61,8 @@ DIO-10 comment thread. Key points that shape the code:
 
 - Photographs and graphics are **forbidden**.
 - Tables allowed only for schematizing activities (casuística, internato organization).
-- Maximum **80 pages**.
+- Maximum **100 pages**. The 2013 norms said 80; the Conselho Nacional raised
+  it on 3.12.2018 for the 5-year internato.
 - `Resumo do currículo` maximum 2 pages.
 - Chronological ordering throughout.
 
@@ -69,9 +70,21 @@ DIO-10 comment thread. Key points that shape the code:
 formação, date. No colours, photographs, or symbols. This is why DIO-12 is
 typographic variants, not a design gallery.
 
-Rule sets are per **Colégio**, not per Diário da República. Each specialty
-publishes its own; the config must treat the above as one rule set among many,
-with a documented default.
+Rule sets are per **Colégio**, not per Diário da República. MFR is one **norm
+profile** among several in `src/lib/formatting/ruleSet.ts` (DIO-43). Each
+profile has a `kind`:
+
+- `explicit`: written norms (MFR; Pediatria: Verdana 10, margins 2.5/3 cm,
+  síntese curricular ≤ 3 pages, delivered as PDF).
+- `template`: an official CV template (Oftalmologia).
+- `none`: nothing published (Anestesiologia, Cirurgia Geral, Ortopedia). These
+  use the **Lauda house standard** (`lauda`).
+
+Each profile cites its sources on ordemdosmedicos.pt and records what it's
+silent on. An unknown or unsourced specialty gets the house standard, never
+another Colégio's norms. Never edit a profile from memory: re-read the source
+and bump `retrievedOn`. The Ordem serves some files under decomposed-accent
+(NFD) filenames; the composed URL silently redirects to the homepage.
 
 ## Architecture
 
@@ -161,7 +174,7 @@ why DIO-40/41/42 exist.
   only produce a single arabic sequence.
 - **Blank pages** ("página intencionalmente deixada em branco") are inserted so
   the body and each major part open on a recto page.
-- **Exact-count validations:** the 80-page cap and the 2-page resumo cap are
+- **Exact-count validations:** the profile's page cap and its summary-section cap are
   checked against the real page count, superseding the estimate for a paginated
   render. Results land on the session record (`artifacts.renderWarnings`,
   `renderedPageCount`).
@@ -242,7 +255,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **274 tests passing** on `main`. Some suites launch a real
+Current baseline: **288 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions
