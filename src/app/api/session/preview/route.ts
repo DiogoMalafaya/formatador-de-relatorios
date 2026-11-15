@@ -1,7 +1,13 @@
 import { updateSession } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
 import { PreviewNotReadyError, renderPreviewPdf, PREVIEW_CONTENT_TYPE } from "@/lib/preview/renderPreview";
-import { SESSION_EXPIRED_PT, UNEXPECTED_ERROR_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
+import {
+  SESSION_EXPIRED_PT,
+  SPECIALTY_RESELECT_PT,
+  UNEXPECTED_ERROR_PT,
+  UPLOAD_REQUIRED_PT,
+} from "@/lib/errors/messages";
+import { needsSpecialtyReselection } from "@/lib/specialties";
 
 /**
  * Streams the watermarked preview (DIO-13) for the current session,
@@ -19,6 +25,15 @@ export async function GET() {
     return Response.json(
       { ok: false, errorMessagePt: SESSION_EXPIRED_PT },
       { status: 401 },
+    );
+  }
+
+  // Never render a CV under a specialty we don't support (DIO-44): it would
+  // silently get the house standard while still naming that specialty.
+  if (needsSpecialtyReselection(session)) {
+    return Response.json(
+      { ok: false, errorMessagePt: SPECIALTY_RESELECT_PT },
+      { status: 409 },
     );
   }
 

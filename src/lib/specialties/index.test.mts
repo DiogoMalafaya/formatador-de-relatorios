@@ -1,6 +1,10 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  formatSupportedSpecialtiesPt,
+  getSupportedSpecialties,
+  isSupportedSpecialty,
+  needsSpecialtyReselection,
   getSpecialties,
   getSpecialtyById,
   resolveRuleSetId,
@@ -54,6 +58,47 @@ describe("specialties", () => {
 
     test("falls back to the house standard for an unknown specialty id", () => {
       assert.equal(resolveRuleSetId("not-a-real-specialty"), HOUSE_RULE_SET_ID);
+    });
+  });
+
+  describe("supported specialties (DIO-44)", () => {
+    test("are exactly the six with a sourced norm profile", () => {
+      assert.deepEqual(
+        getSupportedSpecialties().map((specialty) => specialty.id),
+        [
+          "anestesiologia",
+          "cirurgia-geral",
+          "medicina-fisica-e-de-reabilitacao",
+          "oftalmologia",
+          "ortopedia",
+          "pediatria",
+        ],
+      );
+    });
+
+    test("isSupportedSpecialty rejects listed-but-unprofiled and unknown ids", () => {
+      assert.equal(isSupportedSpecialty("pediatria"), true);
+      assert.equal(isSupportedSpecialty("cardiologia"), false);
+      assert.equal(isSupportedSpecialty("not-a-real-specialty"), false);
+    });
+
+    test("only an unpaid session with an unsupported specialty must re-select", () => {
+      const unpaid = { status: "unpaid" };
+      assert.equal(needsSpecialtyReselection({ specialtyId: "cardiologia", payment: unpaid }), true);
+      assert.equal(needsSpecialtyReselection({ specialtyId: "pediatria", payment: unpaid }), false);
+      assert.equal(needsSpecialtyReselection({ payment: unpaid }), false);
+      assert.equal(
+        needsSpecialtyReselection({ specialtyId: "cardiologia", payment: { status: "paid" } }),
+        false,
+        "a paid session is never blocked from its download",
+      );
+    });
+
+    test("formats the supported list as pt-PT prose", () => {
+      assert.equal(
+        formatSupportedSpecialtiesPt(),
+        "Anestesiologia, Cirurgia Geral, Medicina Física e de Reabilitação, Oftalmologia, Ortopedia e Pediatria",
+      );
     });
   });
 });

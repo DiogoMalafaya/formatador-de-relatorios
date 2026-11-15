@@ -4,6 +4,11 @@ import Icon from "@/components/Icon";
 import SetupWizard from "@/components/SetupWizard";
 import { PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getCurrentSession } from "@/lib/session/cookies";
+import {
+  formatSupportedSpecialtiesPt,
+  getSpecialtyById,
+  needsSpecialtyReselection,
+} from "@/lib/specialties";
 import type { SessionRecord } from "@/lib/session";
 import { maxReachableStep, resolveInitialSetupStep } from "@/lib/wizard/initialStep";
 import styles from "./page.module.css";
@@ -49,6 +54,14 @@ export default async function Home({ searchParams }: HomeProps) {
   // panel instead of silently restarting the wizard.
   const orphanedSuccess = pagamento === "sucesso" && maxReachableStep(session) < 4;
 
+  // A stored specialty we don't support (DIO-44) is handed to the wizard as
+  // "not chosen", with its name so the specialty step can say why.
+  const reselectSpecialty = session !== null && needsSpecialtyReselection(session);
+  const specialtyId = reselectSpecialty ? undefined : session?.specialtyId;
+  const unsupportedSpecialtyNamePt = reselectSpecialty
+    ? getSpecialtyById(session?.specialtyId ?? "")?.name
+    : undefined;
+
   return (
     <div className={styles.page}>
       <div className={styles.shell}>
@@ -88,6 +101,9 @@ export default async function Home({ searchParams }: HomeProps) {
               Carrega o teu currículo em .docx e recebe um PDF pronto para a discussão
               curricular — tipografia, margens, rodapé e capa conforme as normas da tua
               especialidade.
+            </p>
+            <p className={styles.heroSpecialties}>
+              Disponível para {formatSupportedSpecialtiesPt()}.
             </p>
             <div className={styles.heroActions}>
               <a className={styles.heroCta} href="#preparar">
@@ -174,7 +190,8 @@ export default async function Home({ searchParams }: HomeProps) {
             initialStep={resolveInitialSetupStep(session)}
             hasUpload={Boolean(session?.upload)}
             uploadFilename={session?.upload?.originalFilename}
-            specialtyId={session?.specialtyId}
+            specialtyId={specialtyId}
+            unsupportedSpecialtyNamePt={unsupportedSpecialtyNamePt}
             coverId={session?.coverId}
             paid={paid}
             priceLabelPt={priceLabelPt}

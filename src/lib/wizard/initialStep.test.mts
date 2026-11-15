@@ -70,3 +70,17 @@ describe("resolveInitialSetupStep", () => {
     assert.equal(resolveInitialSetupStep(paid), 2);
   });
 });
+
+describe("unsupported specialty (DIO-44)", () => {
+  const unsupported = { upload, specialtyId: "cardiologia", coverId: "classica" };
+
+  test("an unpaid session with an unsupported specialty goes back to the specialty step", () => {
+    assert.equal(maxReachableStep(record(unsupported)), 2);
+    assert.equal(resolveInitialSetupStep(record({ ...unsupported, setupStep: 4 })), 2);
+  });
+
+  test("a paid session keeps its specialty and reaches its download", () => {
+    const paid = record({ ...unsupported, payment: { status: "paid", paidAt: 1 } });
+    assert.equal(resolveInitialSetupStep(paid), 4);
+  });
+});
