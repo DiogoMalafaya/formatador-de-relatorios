@@ -10,6 +10,7 @@ import {
   needsSpecialtyReselection,
 } from "@/lib/specialties";
 import type { SessionRecord } from "@/lib/session";
+import { getMasterSource } from "@/lib/session/sources";
 import { maxReachableStep, resolveInitialSetupStep } from "@/lib/wizard/initialStep";
 import styles from "./page.module.css";
 
@@ -52,6 +53,7 @@ export default async function Home({ searchParams }: HomeProps) {
   // Edge case: a success redirect whose session no longer reaches the
   // workspace (e.g. lost cookie) still deserves the download/confirmation
   // panel instead of silently restarting the wizard.
+  const masterSource = session ? getMasterSource(session) : null;
   const orphanedSuccess = pagamento === "sucesso" && maxReachableStep(session) < 4;
 
   // A stored specialty we don't support (DIO-44) is handed to the wizard as
@@ -188,8 +190,8 @@ export default async function Home({ searchParams }: HomeProps) {
 
           <SetupWizard
             initialStep={resolveInitialSetupStep(session)}
-            hasUpload={Boolean(session?.upload)}
-            uploadFilename={session?.upload?.originalFilename}
+            hasUpload={masterSource !== null}
+            uploadFilename={masterSource?.originalFilename}
             specialtyId={specialtyId}
             unsupportedSpecialtyNamePt={unsupportedSpecialtyNamePt}
             coverId={session?.coverId}
