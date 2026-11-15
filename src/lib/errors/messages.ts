@@ -10,6 +10,10 @@ export const SESSION_EXPIRED_PT = "A tua sessão expirou. Carrega novamente o te
 /** A route that needs a finished upload to do anything, before one exists. */
 export const UPLOAD_REQUIRED_PT = "Carrega primeiro o teu currículo.";
 
+/** The session names a specialty Lauda doesn't support (DIO-44). */
+export const SPECIALTY_RESELECT_PT =
+  "A especialidade que escolheste ainda não é suportada. Escolhe novamente a tua especialidade.";
+
 /**
  * Catch-all for a genuinely unexpected failure (formatting engine crash, PDF
  * render timeout, storage or Firestore unavailable). Never interpolate the

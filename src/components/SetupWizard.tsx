@@ -36,6 +36,8 @@ interface SetupWizardProps {
   hasUpload: boolean;
   uploadFilename?: string;
   specialtyId?: string;
+  /** Set when the stored specialty isn't supported (DIO-44) and must be chosen again. */
+  unsupportedSpecialtyNamePt?: string;
   coverId?: string;
   /**
    * Payment state as the server rendered it (webhook-fed record, or the
@@ -69,6 +71,7 @@ export default function SetupWizard({
   hasUpload,
   uploadFilename,
   specialtyId: initialSpecialtyId,
+  unsupportedSpecialtyNamePt,
   coverId: initialCoverId,
   paid,
   priceLabelPt,
@@ -166,6 +169,7 @@ export default function SetupWizard({
               <h2 className={styles.stepTitle}>Escolhe a tua especialidade</h2>
               <SpecialtySelect
                 initialSpecialtyId={specialtyId || undefined}
+                unsupportedSpecialtyNamePt={specialtyId ? undefined : unsupportedSpecialtyNamePt}
                 onSaved={setSpecialtyId}
               />
             </div>

@@ -3,7 +3,8 @@ import { getCurrentSession } from "@/lib/session/cookies";
 import { getOrderedSources } from "@/lib/session/sources";
 import { CURRENCY, PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getStripeClient } from "@/lib/stripe";
-import { SESSION_EXPIRED_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
+import { SESSION_EXPIRED_PT, SPECIALTY_RESELECT_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
+import { needsSpecialtyReselection } from "@/lib/specialties";
 
 const PAYMENT_START_FAILED_PT = "Não foi possível iniciar o pagamento. Tenta novamente.";
 
@@ -30,6 +31,13 @@ export async function POST(request: Request) {
   if (getOrderedSources(session).length === 0) {
     return Response.json(
       { ok: false, errorMessagePt: UPLOAD_REQUIRED_PT },
+      { status: 409 },
+    );
+  }
+
+  if (needsSpecialtyReselection(session)) {
+    return Response.json(
+      { ok: false, errorMessagePt: SPECIALTY_RESELECT_PT },
       { status: 409 },
     );
   }

@@ -82,7 +82,9 @@ profile has a `kind`:
 
 Each profile cites its sources on ordemdosmedicos.pt and records what it's
 silent on. An unknown or unsourced specialty gets the house standard, never
-another Colégio's norms. Never edit a profile from memory: re-read the source
+another Colégio's norms. Only specialties with a profile can be chosen
+(DIO-44); an unpaid session whose stored specialty isn't supported is sent back
+to the specialty step, but a paid one is never blocked from its download. Never edit a profile from memory: re-read the source
 and bump `retrievedOn`. The Ordem serves some files under decomposed-accent
 (NFD) filenames; the composed URL silently redirects to the homepage.
 
@@ -255,7 +257,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **288 tests passing** on `main`. Some suites launch a real
+Current baseline: **300 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions

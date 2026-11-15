@@ -1,5 +1,6 @@
 import { getOrderedSources } from "../session/sources.ts";
 import type { SessionRecord } from "../session/types.ts";
+import { needsSpecialtyReselection } from "../specialties/index.ts";
 
 /**
  * Guided-setup wizard steps (DIO-37/DIO-38): 1 = upload, 2 = specialty,
@@ -16,7 +17,8 @@ export type WizardStep = 1 | 2 | 3 | 4;
  */
 export function maxReachableStep(session: SessionRecord | null): WizardStep {
   if (!session || getOrderedSources(session).length === 0) return 1;
-  if (!session.specialtyId) return 2;
+  // An unsupported specialty counts as not chosen (DIO-44), unless paid.
+  if (!session.specialtyId || needsSpecialtyReselection(session)) return 2;
   if (!session.coverId) return 3;
   return 4;
 }

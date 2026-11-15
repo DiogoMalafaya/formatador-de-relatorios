@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { getSpecialties } from "@/lib/specialties";
+import { getSupportedSpecialties } from "@/lib/specialties";
 import styles from "./SpecialtySelect.module.css";
 
 /**
- * Specialty selection (DIO-9).
+ * Specialty selection (DIO-9, restricted in DIO-44).
  *
- * The list itself is config, not this component's concern — see
- * `src/lib/specialties/data.ts`. The note below exists because of D1: every
- * specialty applies the same generic rule set today, so we say so rather
- * than implying per-specialty formatting that doesn't exist yet.
+ * Lists only the specialties Lauda supports, i.e. those with a sourced norm
+ * profile (`getSupportedSpecialties`). The list itself is config, not this
+ * component's concern. Unsupported specialties are hidden, with a one-line
+ * note saying so (PRD Q8), rather than listed and disabled.
  */
 
 type Status =
@@ -22,12 +22,18 @@ type Status =
 interface SpecialtySelectProps {
   /** Restores a previously saved choice when the wizard step is revisited (DIO-37). */
   initialSpecialtyId?: string;
+  /** The previously stored specialty, when it isn't supported and must be chosen again. */
+  unsupportedSpecialtyNamePt?: string;
   /** Notifies the setup wizard (DIO-37) that this step is now satisfied. */
   onSaved?: (specialtyId: string) => void;
 }
 
-export default function SpecialtySelect({ initialSpecialtyId, onSaved }: SpecialtySelectProps) {
-  const specialties = getSpecialties();
+export default function SpecialtySelect({
+  initialSpecialtyId,
+  unsupportedSpecialtyNamePt,
+  onSaved,
+}: SpecialtySelectProps) {
+  const specialties = getSupportedSpecialties();
   const [selectedId, setSelectedId] = useState(initialSpecialtyId ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -84,9 +90,16 @@ export default function SpecialtySelect({ initialSpecialtyId, onSaved }: Special
         ))}
       </select>
 
+      {unsupportedSpecialtyNamePt && status.kind === "idle" && (
+        <p className={styles.statusInfo} role="status">
+          {unsupportedSpecialtyNamePt} ainda não é suportada. Escolhe novamente a tua
+          especialidade para continuar.
+        </p>
+      )}
+
       <p className={styles.note}>
-        Formatação base comum a todas as especialidades — as normas próprias de
-        cada Colégio vão sendo adicionadas progressivamente.
+        A tua especialidade não aparece? Por agora suportamos apenas estas — estamos a
+        acrescentar mais.
       </p>
 
       {status.kind === "saving" && (

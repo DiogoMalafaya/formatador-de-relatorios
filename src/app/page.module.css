@@ -180,6 +180,13 @@
   color: var(--on-brand);
 }
 
+.heroSpecialties {
+  max-width: 400px;
+  font: var(--type-body-sm);
+  color: var(--on-brand);
+  opacity: 0.85;
+}
+
 .heroActions {
   display: flex;
   flex-wrap: wrap;

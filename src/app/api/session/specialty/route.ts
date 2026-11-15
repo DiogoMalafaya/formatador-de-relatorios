@@ -1,6 +1,6 @@
 import { updateSession } from "@/lib/session";
 import { getCurrentSession } from "@/lib/session/cookies";
-import { getSpecialtyById } from "@/lib/specialties";
+import { isSupportedSpecialty } from "@/lib/specialties";
 import { SESSION_EXPIRED_PT, UNEXPECTED_ERROR_PT } from "@/lib/errors/messages";
 
 /**
@@ -26,7 +26,10 @@ export async function POST(request: Request) {
       ? (body as { specialtyId: unknown }).specialtyId
       : undefined;
 
-  if (typeof specialtyId !== "string" || !getSpecialtyById(specialtyId)) {
+  // Only supported specialties (those with a sourced norm profile, DIO-44)
+  // can be chosen; anything else would silently render with the house
+  // standard under another specialty's name.
+  if (typeof specialtyId !== "string" || !isSupportedSpecialty(specialtyId)) {
     return Response.json(
       { ok: false, errorMessagePt: "Especialidade inválida." },
       { status: 400 },
