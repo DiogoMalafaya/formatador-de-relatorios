@@ -19,6 +19,8 @@ export type FormattingWarningCode =
   | "source-cover-replaced"
   /** Exact-count variants, emitted by the two-pass render (DIO-42) once a real page map exists. */
   | "page-limit-exceeded"
+  /** The PDF compliance checker (DIO-47) found the output breaking a rule of the profile. */
+  | "compliance-violation"
   | "summary-section-too-long";
 
 export interface FormattingWarning {

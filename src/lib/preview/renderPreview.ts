@@ -21,6 +21,7 @@ import { renderPdf } from "../pdf/render.ts";
 import { renderPaginatedPdf } from "../pdf/renderPaginated.ts";
 import { DocumentNotReadyError, prepareDocument } from "../rendering/prepareDocument.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
+import { complianceWarnings } from "../compliance/checkPdf.ts";
 import type { SessionRecord } from "../session/types.ts";
 
 export const PREVIEW_CONTENT_TYPE = "application/pdf";
@@ -31,9 +32,9 @@ export interface RenderedPreview {
   storageKey: string;
   pdf: Buffer;
   /**
-   * Exact-count validations from the paginated render (80-page limit, resumo
-   * length — DIO-42). Undefined on the single-file path, where only the
-   * pre-render estimate exists.
+   * Post-render findings: the paginated render's exact-count validations
+   * (page cap, summary section — DIO-42) plus the PDF compliance checker's
+   * (DIO-47, both paths). Undefined when there are none.
    */
   renderWarnings?: FormattingWarning[];
   /** Exact page count of the rendered document, when the paginated render produced one. */
@@ -66,6 +67,20 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
     pageCount = rendered.report.totalPages;
   } else {
     pdf = await renderPdf(watermarked, { candidateName: prepared.candidateName });
+  }
+
+  // Check the PDF we actually produced against its profile (DIO-47). The
+  // watermark tile is an image, so the image check is left out here (images
+  // are already warned about at parse time), and the page cap is already an
+  // exact-count warning from the paginated render.
+  const compliance = await complianceWarnings(pdf, {
+    ruleSet: prepared.document.ruleSet,
+    fontFamily: prepared.document.fontFamily,
+    candidateName: prepared.candidateName,
+    skip: ["images-forbidden", "page-cap"],
+  });
+  if (compliance.length > 0) {
+    renderWarnings = [...(renderWarnings ?? []), ...compliance];
   }
 
   const storageKey = `${session.id}/preview.pdf`;

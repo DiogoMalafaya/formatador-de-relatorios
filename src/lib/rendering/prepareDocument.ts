@@ -66,7 +66,7 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
     }
 
     const formatted = await applyFormatting(sourceBuffer, { ruleSetId });
-    return withCover(formatted, session);
+    return withCover(formatted, { coverId: session.coverId });
   }
 
   // --- multi-file: parse everything, warn per file, merge, format ---------
@@ -76,24 +76,56 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
     throw new DocumentNotReadyError("an uploaded file is no longer in storage");
   }
 
-  const parsedSources: MergeSource[] = await Promise.all(
+  const parsedSources = await Promise.all(
     sources.map(async (source, index) => ({
       id: `source-${source.index}`,
+      filename: source.originalFilename,
       document: await parseDocxDocument(buffers[index] as Buffer),
     })),
   );
 
+  return assembleMultiFileDocument({
+    sources: parsedSources,
+    masterPosition: sources.findIndex((source) => source.index === master.index),
+    ruleSetId,
+    coverId: session.coverId,
+  });
+}
+
+/** One parsed source of a multi-file CV, still knowing which file it was. */
+export interface ParsedSource extends MergeSource {
+  /** The uploaded filename, for per-file warnings ("Em «SIJ.docx»: …"). */
+  filename: string;
+}
+
+export interface AssembleOptions {
+  /** Parsed sources in the student's order. */
+  sources: ParsedSource[];
+  /** Index into `sources` of the documento principal. */
+  masterPosition: number;
+  ruleSetId: string;
+  coverId?: string;
+  /** Cover date; defaults to today. Fixed by the golden corpus for stable output. */
+  dateLabel?: string;
+}
+
+/**
+ * The pure part of the multi-file pipeline: per-file warnings, merge,
+ * formatting, cover. No storage, no session — so the golden corpus
+ * (DIO-47) renders through exactly the code production does.
+ */
+export function assembleMultiFileDocument(options: AssembleOptions): PreparedDocument {
+  const { sources, masterPosition, ruleSetId } = options;
   const ruleSet = getRuleSet(ruleSetId);
-  const perSourceWarnings = sources.flatMap((source, index) =>
-    collectConstraintWarnings(parsedSources[index].document, ruleSet).map((warning) =>
-      withSourceFilename(warning, source.originalFilename),
+  const perSourceWarnings = sources.flatMap((source) =>
+    collectConstraintWarnings(source.document, ruleSet).map((warning) =>
+      withSourceFilename(warning, source.filename),
     ),
   );
 
-  const masterPosition = sources.findIndex((source) => source.index === master.index);
   const merged = mergeDocuments(
-    parsedSources[masterPosition],
-    parsedSources.filter((_, index) => index !== masterPosition),
+    sources[masterPosition],
+    sources.filter((_, index) => index !== masterPosition),
   );
 
   const formatted = formatParsedDocument(merged.document, { ruleSetId }, {
@@ -109,19 +141,20 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
       css: `${formatted.css}\n${GENERATED_TOC_CSS}`,
       extractedCandidateName: merged.candidateName ?? formatted.extractedCandidateName,
     },
-    session,
+    { coverId: options.coverId, dateLabel: options.dateLabel },
     { headings: merged.headings },
   );
 }
 
 function withCover(
   formatted: FormattedDocument,
-  session: SessionRecord,
+  cover: { coverId?: string; dateLabel?: string },
   merge?: { headings: MergedHeading[] },
 ): PreparedDocument {
   const withCoverDocument = mergeCoverWithDocument(formatted, {
-    coverId: session.coverId,
+    coverId: cover.coverId,
     candidateName: formatted.extractedCandidateName,
+    ...(cover.dateLabel ? { dateLabel: cover.dateLabel } : {}),
   });
 
   return {
