@@ -27,5 +27,15 @@ jobs:
       - name: Test
         run: npm test
 
+      # Visual-regression review images (DIO-47): actual, baseline and diff
+      # for every page that no longer matches its approved baseline.
+      - name: Upload visual diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-diff
+          path: .visual-diff/
+          if-no-files-found: ignore
+
       - name: Build
         run: npm run build
