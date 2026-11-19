@@ -5,9 +5,9 @@
  * be replaced. Generation produces the new Índice in two passes: pass 1 emits
  * entries with machine-readable page-number placeholders (so the document can
  * be rendered once and a heading-id → page map extracted — DIO-42), pass 2
- * fills the placeholders from that map, roman for front matter, arabic for
- * the body. Page numbers therefore come from the actual render, never from an
- * estimate (PRD G2, zero tolerance).
+ * fills the placeholders from that map with the page as printed (one arabic
+ * sequence from the cover, DIO-51). Page numbers therefore come from the
+ * actual render, never from an estimate (PRD G2, zero tolerance).
  */
 
 import { escapeHtml } from "../html.ts";
@@ -225,52 +225,30 @@ export interface FillTocResult {
 }
 
 const PLACEHOLDER_PATTERN =
-  /<span class="toc-page" data-toc-heading="([^"]*)" data-toc-numbering="(roman|arabic)"><\/span>/g;
+  /<span class="toc-page" data-toc-heading="([^"]*)" data-toc-numbering="(?:roman|arabic)"><\/span>/g;
 
 /**
  * Pass-2 form: fills every placeholder emitted by `renderTocHtml` /
- * `tocPagePlaceholder` from the rendered page map. Page numbers in the map
- * are sequence-local (front matter counted in its roman sequence, body
- * restarting at 1) — the render pass owns pagination math, this owns display.
+ * `tocPagePlaceholder` from the rendered page map. One arabic sequence from
+ * the cover (DIO-51), so the number is the page as printed; the render pass
+ * owns pagination math, this owns display.
  */
 export function fillTocPageNumbers(
   html: string,
   pageNumbers: ReadonlyMap<string, number>,
 ): FillTocResult {
   const missingHeadingIds: string[] = [];
-  const filled = html.replace(PLACEHOLDER_PATTERN, (whole, headingId: string, numbering: PageNumbering) => {
+  const filled = html.replace(PLACEHOLDER_PATTERN, (whole, headingId: string) => {
     const page = pageNumbers.get(headingId);
     if (page === undefined) {
       missingHeadingIds.push(headingId);
       return whole;
     }
-    return `<span class="toc-page">${formatTocPageNumber(page, numbering)}</span>`;
+    return `<span class="toc-page">${formatTocPageNumber(page)}</span>`;
   });
   return { html: filled, missingHeadingIds };
 }
 
-export function formatTocPageNumber(page: number, numbering: PageNumbering): string {
-  return numbering === "roman" ? toRomanLowercase(page) : String(page);
-}
-
-const ROMAN_DIGITS: readonly [number, string][] = [
-  [1000, "m"], [900, "cm"], [500, "d"], [400, "cd"],
-  [100, "c"], [90, "xc"], [50, "l"], [40, "xl"],
-  [10, "x"], [9, "ix"], [5, "v"], [4, "iv"], [1, "i"],
-];
-
-/** Lowercase roman numerals — the front-matter convention ("i, ii, iii"). */
-export function toRomanLowercase(value: number): string {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new RangeError(`roman numeral requires a positive integer, got ${value}`);
-  }
-  let remaining = value;
-  let out = "";
-  for (const [magnitude, digits] of ROMAN_DIGITS) {
-    while (remaining >= magnitude) {
-      out += digits;
-      remaining -= magnitude;
-    }
-  }
-  return out;
+export function formatTocPageNumber(page: number): string {
+  return String(page);
 }

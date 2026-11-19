@@ -13,7 +13,6 @@ export {
   formatTocPageNumber,
   renderTocHtml,
   tocPagePlaceholder,
-  toRomanLowercase,
   GENERATED_TOC_CSS,
 } from "./toc.ts";
 export type { DetectedToc, FillTocResult, GenerateTocOptions } from "./toc.ts";

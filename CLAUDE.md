@@ -160,7 +160,7 @@ why DIO-40/41/42 exist.
     (`MergeResult.candidateName`), because a merged CV's first heading is a
     front-matter title.
   - Leading front-matter sections after the Índice (abbreviations, lists,
-    nota prévia, agradecimentos) stay roman front matter.
+    nota prévia, agradecimentos) stay front matter.
   - The rest of the master is body, demoted to chapter level like any chapter
     file, so every body part shares one level.
   - Part titles carry `class="part-title"` and render uppercase, both in the
@@ -183,15 +183,22 @@ why DIO-40/41/42 exist.
   prints with the Índice filled and blank pages in place. Both passes share one
   Chromium instance and one invocation; nothing is persisted between them.
   Converging in exactly **2 passes** is a tested property (`MAX_PASSES` is 3).
-- **Numbering:** front matter in lowercase roman (cover footer suppressed), body
-  restarting at arabic 1. Footers and the running header are stamped with
+- **Numbering (DIO-51):** **one arabic sequence from the cover.** The cover is
+  page 1 and counts but shows nothing; every other page shows its absolute
+  page number, and so does the Índice. The roman front matter + body
+  restarting at 1 of DIO-42 is gone. `MergedHeading.numbering`
+  (`"roman" | "arabic"`) survives only as a front-matter/body classifier —
+  nothing prints in roman. Footers and the running header are stamped with
   pdf-lib *after* the final print (`stamp.ts`, shared with the single-file
-  path). Chromium's footer template can only produce one arabic sequence, and
-  it can't load our embedded fonts.
-- **Blank pages** ("página intencionalmente deixada em branco") are inserted so
-  the Índice, the body and each major part open on a recto page. The Índice
-  gets the same treatment as the body: a 1px marker (`TOC_START_MARKER_ID`)
-  passed to the planner as a `frontRectoMarker`.
+  path): Chromium's footer template can't leave the cover and blanks
+  unmarked, and it can't load our embedded fonts.
+- **Blank filler pages** are **truly blank** — no text, footer or number — but
+  count in the sequence and the page cap. They're inserted so the rosto, a
+  dedication, the Índice, the body and each major part open on a recto. The
+  front-matter ones are `frontRectoMarkers` (1px marker divs, or heading ids).
+- **Recto starts are for print-delivered profiles only** (`page.delivery ===
+  "print"`, e.g. MFR). A PDF-delivered profile (Pediatria) gets no fillers
+  (`planPagination({ rectoStarts: false })`, PRD Q12).
 - **Exact-count validations:** the profile's page cap and its summary-section cap are
   checked against the real page count, superseding the estimate for a paginated
   render. Results land on the session record (`artifacts.renderWarnings`,
@@ -206,7 +213,7 @@ Three invariants in `paginate.ts` are easy to break and were each a real bug:
    own blanks back must reproduce it (a fixed point). An incremental plan can
    only ever add blanks, so a reflow stacks a second one instead of moving the
    first — the loop then oscillates and emits two blanks in a row.
-2. "Major part" is the **shallowest arabic heading level actually present**, not
+2. "Major part" is the **shallowest body heading level actually present**, not
    level 1. The merge demotes chapters to level 2, so testing `level === 1`
    silently disables part breaks and recto starts on exactly the multi-file
    documents this code exists for.
@@ -214,7 +221,7 @@ Three invariants in `paginate.ts` are easy to break and were each a real bug:
    and the first part heading deliberately gets none (or it would leave a page
    holding just the 1px marker). Without this the body shares the front
    matter's last page and an inserted blank shifts it by two pages, not one.
-   The marker sits right before the **first arabic heading**, not right after
+   The marker sits right before the **first body heading**, not right after
    the Índice. Otherwise front matter placed after the Índice becomes body
    page 1, and its `<h1>` becomes the only "major part" (DIO-45).
 

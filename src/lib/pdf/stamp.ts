@@ -3,8 +3,8 @@
  *
  * Done with pdf-lib *after* Chromium prints, rather than with Chromium's
  * header/footer templates, for two reasons:
- * - the paginated render needs roman/arabic labels and per-page section
- *   headers that a template can't express (DIO-42);
+ * - the paginated render needs per-page labels (none on the cover and on
+ *   blank fillers, DIO-51) and section headers a template can't express;
  * - templates render in their own context, which can't load the embedded
  *   fonts, so the footer would fall back to a system font, breaking the
  *   norms' font rule in the one line every page carries.

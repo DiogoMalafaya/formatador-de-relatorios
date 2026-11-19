@@ -1,19 +1,26 @@
 /**
- * Pagination math for the two-pass render (DIO-42). Pure functions, no
- * Chromium, no pdf-lib — `renderPaginated.ts` feeds them extracted page maps.
+ * Pagination math for the two-pass render (DIO-42, numbering reworked in
+ * DIO-51). Pure functions, no Chromium, no pdf-lib — `renderPaginated.ts`
+ * feeds them extracted page maps.
  *
- * The numbering scheme mirrors the real signed volume and the norms:
+ * The numbering scheme (decision of 2026-11-13, PRD US10):
  *
- * - Front matter (cover, structure page, dedication, Índice) is one roman
- *   sequence starting at the cover (= page i, footer suppressed there).
- * - The body restarts at arabic 1 on its first page.
- * - Double-sided printing wants the body — and each major part (level-1 body
- *   heading) — to start on a recto (odd absolute) page, so a blank page
- *   ("página intencionalmente deixada em branco") is inserted where the
- *   preceding sequence ends on an odd absolute page.
+ * - **One arabic sequence from the cover.** The cover is page 1 and counts,
+ *   but shows nothing. Every page's number is its absolute page, so the
+ *   Índice's numbers are absolute pages too. This also satisfies MFR's
+ *   "numeração sequencial".
+ * - Double-sided printing wants the body — and each major part — to start
+ *   on a recto (odd) page, so a **truly blank** filler page is inserted where
+ *   the preceding content ends on an odd page. Fillers count in the sequence
+ *   and the page total, but carry no text, footer or number (PRD US7).
+ * - Recto starts are for print-delivered profiles; a PDF-delivered profile
+ *   (Pediatria) skips them by default, since blank pages in an on-screen PDF
+ *   read as errors (PRD Q12).
+ *
+ * `MergedHeading.numbering` ("roman" | "arabic") now only says front matter
+ * vs. body; nothing is printed in roman numerals any more.
  */
 
-import { toRomanLowercase } from "../merge/toc.ts";
 import type { MergedHeading, PageNumbering } from "../merge/types.ts";
 import { BODY_START_MARKER_ID } from "./template.ts";
 
@@ -35,6 +42,12 @@ export interface PaginationInput {
    * the generated Índice's start marker (DIO-45). Each must be in `pages`.
    */
   frontRectoMarkers?: readonly string[];
+  /**
+   * Insert blank fillers so parts open on a recto. Default true; false for a
+   * PDF-delivered profile (DIO-51, PRD Q12) — then the plan never adds blanks
+   * and only reports pages.
+   */
+  rectoStarts?: boolean;
   /**
    * Non-heading anchors that need a sequence-local page number too — today
    * the numbered table captions the Lista de tabelas points at (DIO-48).
@@ -58,7 +71,7 @@ export interface PaginationPlan {
    * parity by exactly one, so a second could never help.
    */
   blankAnchors: string[];
-  /** Predicted final 1-based absolute page where the arabic sequence starts. */
+  /** Predicted final 1-based absolute page where the body starts. */
   bodyStartPage: number;
   /** Predicted final total content pages. */
   totalPages: number;
@@ -69,9 +82,8 @@ export interface PaginationPlan {
   /** Predicted final absolute page per point and tracked anchor. */
   pointPages: Map<string, number>;
   /**
-   * Sequence-local page numbers per heading id, for `fillTocPageNumbers`:
-   * roman-sequence headings get their absolute page (the sequence starts at
-   * the cover), arabic ones restart at 1 on the body's first page.
+   * Printed page numbers per heading/caption id, for `fillTocPageNumbers`.
+   * One sequence from the cover (DIO-51), so these are the absolute pages.
    */
   tocPageNumbers: Map<string, number>;
   /** True when the render already carries exactly the blanks this plan wants. */
@@ -100,11 +112,13 @@ export function planPagination(input: PaginationInput): PaginationPlan {
   };
   const partLevel = partHeadingLevel(headings);
   const frontRectoMarkers = input.frontRectoMarkers ?? [];
-  for (const marker of frontRectoMarkers) push(marker, pages.get(marker));
-  push(BODY_START_MARKER_ID, bodyStartRendered);
-  for (const heading of headings) {
-    if (heading.numbering !== "arabic" || heading.level !== partLevel) continue;
-    push(heading.id, pages.get(heading.id));
+  if (input.rectoStarts ?? true) {
+    for (const marker of frontRectoMarkers) push(marker, pages.get(marker));
+    push(BODY_START_MARKER_ID, bodyStartRendered);
+    for (const heading of headings) {
+      if (heading.numbering !== "arabic" || heading.level !== partLevel) continue;
+      push(heading.id, pages.get(heading.id));
+    }
   }
   anchors.sort((a, b) => a.page - b.page);
 
@@ -144,10 +158,7 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     if (rendered === undefined) continue;
     const finalPage = finalPageOf(rendered);
     headingPages.set(heading.id, finalPage);
-    tocPageNumbers.set(
-      heading.id,
-      heading.numbering === "roman" || finalPage < bodyStartPage ? finalPage : finalPage - bodyStartPage + 1,
-    );
+    tocPageNumbers.set(heading.id, finalPage);
   }
 
   const pointPages = new Map<string, number>();
@@ -160,10 +171,7 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     if (rendered === undefined) continue;
     const finalPage = finalPageOf(rendered);
     pointPages.set(anchor.id, finalPage);
-    tocPageNumbers.set(
-      anchor.id,
-      anchor.numbering === "roman" || finalPage < bodyStartPage ? finalPage : finalPage - bodyStartPage + 1,
-    );
+    tocPageNumbers.set(anchor.id, finalPage);
   }
 
   const markerPages = new Map<string, number>();
@@ -231,22 +239,14 @@ function resolveBodyStart(
 }
 
 /**
- * Per-page footer labels for a stable geometry. `null` = no footer (the
- * cover); roman lowercase for the rest of the front matter; arabic
- * restarting at 1 from `bodyStartPage`. Blank pages are ordinary members of
- * whichever sequence they fall in — the norms put the candidate name and a
- * sequential page number on every page.
+ * Per-page footer labels for a stable geometry (DIO-51): the absolute page
+ * number, one sequence from the cover. `null` = nothing printed: the cover
+ * and every blank filler page. They still count.
  */
-export function buildPageLabels(totalPages: number, bodyStartPage: number): (string | null)[] {
+export function buildPageLabels(totalPages: number, blankPages: ReadonlySet<number>): (string | null)[] {
   const labels: (string | null)[] = [];
   for (let page = 1; page <= totalPages; page += 1) {
-    if (page === 1) {
-      labels.push(null);
-    } else if (page < bodyStartPage) {
-      labels.push(toRomanLowercase(page));
-    } else {
-      labels.push(String(page - bodyStartPage + 1));
-    }
+    labels.push(page === 1 || blankPages.has(page) ? null : String(page));
   }
   return labels;
 }

@@ -26,8 +26,8 @@ ${document.html}
  * Two-pass pagination furniture (DIO-42).                                   *
  *                                                                           *
  * The merged multi-file document is paginated like the real signed volume:  *
- * roman front matter, arabic body restarting at 1, blank pages forcing      *
- * recto starts for double-sided printing, and a page-map probe that turns   *
+ * one arabic sequence from the cover (DIO-51), blank fillers forcing recto  *
+ * starts for double-sided printing, and a page-map probe that turns         *
  * pass 1's printed PDF into an exact heading → page map (see pageMap.ts).   *
  * All of it is plain HTML/CSS so it stays unit-testable without Chromium.   *
  * ------------------------------------------------------------------------ */
@@ -56,15 +56,14 @@ export function buildTocStartMarker(): string {
   return `<div id="${TOC_START_MARKER_ID}" class="page-map-marker" aria-hidden="true"></div>`;
 }
 
-export const INTENTIONAL_BLANK_TEXT_PT = "Página intencionalmente deixada em branco";
 
 /**
- * One intentionally-blank page, inserted where double-sided printing needs
- * the following content to start on a recto (odd) page. Carries the pt-PT
- * convention text the reference document uses, centred, nothing else.
+ * One truly blank filler page (DIO-51), inserted where double-sided printing
+ * needs the following content to start on a recto (odd) page. No text; the
+ * stamp leaves it without footer or number too, but it counts.
  */
 export function buildBlankPageHtml(): string {
-  return `<section class="intentional-blank-page" aria-hidden="true"><p>${INTENTIONAL_BLANK_TEXT_PT}</p></section>`;
+  return `<section class="intentional-blank-page" aria-hidden="true"></section>`;
 }
 
 /** CSS for the marker and blank pages. Shipped only by the paginated (multi-file) render path. */
@@ -92,7 +91,6 @@ export const PAGINATION_CSS = `
      section fills exactly one page without ever spilling onto a second. */
   height: 23.5cm;
 }
-.intentional-blank-page p { font-style: italic; text-align: center; }
 `;
 
 /** Anchor id of the probe section's own first element — everything before its page is real content. */

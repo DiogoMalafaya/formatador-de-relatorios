@@ -52,8 +52,8 @@ describe("planPagination", () => {
       assert.deepEqual(plan.blankAnchors, [BODY_START_MARKER_ID, "parte-2"]);
       assert.equal(plan.bodyStartPage, 5);
       assert.equal(plan.tocPageNumbers.get("caption-front"), 2);
-      assert.equal(plan.tocPageNumbers.get("caption-1"), 1, "absolute 5 = arabic 1");
-      assert.equal(plan.tocPageNumbers.get("caption-2"), 4, "absolute 8 = arabic 4, past both blanks");
+      assert.equal(plan.tocPageNumbers.get("caption-1"), 5, "absolute page, one sequence (DIO-51)");
+      assert.equal(plan.tocPageNumbers.get("caption-2"), 8, "past both blanks");
       assert.equal(plan.totalPages, 10);
     });
   });
@@ -191,7 +191,7 @@ describe("planPagination", () => {
     assert.deepEqual(plan.blankAnchors, []);
   });
 
-  test("TOC numbers are roman-sequence absolute for front matter, body-relative for the body", () => {
+  test("TOC numbers are the absolute page for front matter and body alike (DIO-51)", () => {
     const headings = [frontHeading("dedicatoria"), frontHeading("indice"), bodyHeading("parte-1")];
     const pages = new Map([
       ["dedicatoria", 3],
@@ -202,9 +202,31 @@ describe("planPagination", () => {
 
     const plan = planPagination({ headings, pages, totalPages: 20 });
 
-    assert.equal(plan.tocPageNumbers.get("dedicatoria"), 3, "front matter keeps its absolute page");
+    assert.equal(plan.tocPageNumbers.get("dedicatoria"), 3);
     assert.equal(plan.tocPageNumbers.get("indice"), 4);
-    assert.equal(plan.tocPageNumbers.get("parte-1"), 1, "the body restarts at 1");
+    assert.equal(plan.tocPageNumbers.get("parte-1"), 5, "one sequence: the body does not restart at 1");
+  });
+
+  test("a PDF-delivered profile gets no recto starts and so no blanks (PRD Q12)", () => {
+    const headings = [frontHeading("indice"), bodyHeading("parte-1"), bodyHeading("parte-2")];
+    const pages = new Map([
+      [TOC_START_MARKER_ID, 2],
+      ["indice", 2],
+      [BODY_START_MARKER_ID, 4],
+      ["parte-1", 4],
+      ["parte-2", 6],
+    ]);
+    const plan = planPagination({
+      headings,
+      pages,
+      totalPages: 9,
+      frontRectoMarkers: [TOC_START_MARKER_ID],
+      rectoStarts: false,
+    });
+    assert.deepEqual(plan.blankAnchors, []);
+    assert.equal(plan.stable, true);
+    assert.equal(plan.totalPages, 9);
+    assert.equal(plan.tocPageNumbers.get("parte-2"), 6);
   });
 
   test("treats a document with no body as entirely front matter", () => {
@@ -297,14 +319,14 @@ describe("planPagination", () => {
 });
 
 describe("buildPageLabels", () => {
-  test("suppresses the cover footer, then runs roman until the body restarts at 1", () => {
-    const labels = buildPageLabels(8, 5);
+  test("one arabic sequence from the cover; nothing on the cover or on blanks, which still count (DIO-51)", () => {
+    const labels = buildPageLabels(8, new Set([4, 6]));
 
-    assert.deepEqual(labels, [null, "ii", "iii", "iv", "1", "2", "3", "4"]);
+    assert.deepEqual(labels, [null, "2", "3", null, "5", null, "7", "8"]);
   });
 
-  test("numbers every page when the body starts immediately after the cover", () => {
-    assert.deepEqual(buildPageLabels(3, 2), [null, "1", "2"]);
+  test("without blanks, every page but the cover shows its number", () => {
+    assert.deepEqual(buildPageLabels(3, new Set()), [null, "2", "3"]);
   });
 });
 

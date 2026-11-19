@@ -55,7 +55,8 @@ export async function renderPdf(document: FormattedDocument, options: RenderPdfO
     const pageCount = (await PDFDocument.load(pdf)).getPageCount();
     return stampPages(pdf, {
       contentPageCount: pageCount,
-      pageLabels: Array.from({ length: pageCount }, (_, index) => String(index + 1)),
+      // One sequence from the cover, which counts but shows nothing (DIO-51).
+      pageLabels: Array.from({ length: pageCount }, (_, index) => (index === 0 ? null : String(index + 1))),
       headers: new Array<string | null>(pageCount).fill(null),
       candidateName: options.candidateName,
       fontFamily: document.fontFamily,

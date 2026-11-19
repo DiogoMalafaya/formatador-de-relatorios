@@ -10,11 +10,10 @@
  * somehow reflowed a page boundary, one corrective pass runs (three passes
  * maximum; geometry converges on the first re-render in practice).
  *
- * Footers (candidate name + roman/arabic page number) and the optional
+ * Footers (candidate name + page number) and the optional
  * running section header are stamped with pdf-lib after the final print —
- * Chromium's own header/footer templates can only produce one arabic
- * sequence, and the norms want roman front matter with the body restarting
- * at 1. The probe pages are stripped before stamping, so nothing synthetic
+ * Chromium's own header/footer templates can't leave the cover and blank
+ * fillers unmarked or carry per-page section headers. The probe pages are stripped before stamping, so nothing synthetic
  * ever leaves the render. Both passes share one Chromium instance and one
  * invocation; no intermediate state is persisted anywhere.
  */
@@ -77,7 +76,7 @@ export interface PaginatedRenderReport {
   bodyStartPage: number;
   /** Footer label per page (1-based order); null = footer suppressed (cover). */
   pageLabels: (string | null)[];
-  /** 1-based absolute pages occupied by inserted "intencionalmente em branco" pages. */
+  /** 1-based absolute pages occupied by inserted blank filler pages (no marks, DIO-51). */
   blankPages: number[];
   /** Final 1-based absolute page of each merged heading, by heading id. */
   headingPages: Record<string, number>;
@@ -165,6 +164,9 @@ export async function renderPaginatedPdf(
         totalPages: map.contentPageCount,
         existingBlanks: new Set(blankCounts.keys()),
         frontRectoMarkers,
+        // Recto starts and their blank fillers are for print; a PDF-delivered
+        // profile (Pediatria) reads them as errors (DIO-51, PRD Q12).
+        rectoStarts: ruleSet.page.delivery === "print",
         pointAnchors: captions,
         trackedAnchors: lowResolutionImages.map((image) => image.anchorId),
       });
@@ -190,7 +192,7 @@ export async function renderPaginatedPdf(
   const totalPages = plan.totalPages;
   const bodyStartPage = plan.bodyStartPage;
   const blankPages = resolveBlankPages(blankCounts, plan);
-  const pageLabels = buildPageLabels(totalPages, bodyStartPage);
+  const pageLabels = buildPageLabels(totalPages, new Set(blankPages));
   // The running header names a part, and part titles render uppercase
   // (GENERATED_TOC_CSS, DIO-45), so the header matches what the page shows
   // rather than whatever case the chapter file was typed in.
