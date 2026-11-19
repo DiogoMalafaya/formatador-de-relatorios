@@ -44,3 +44,6 @@ next-env.d.ts
 
 # Real CV examples (personal data) — never commit
 /examples/
+
+# visual-regression review images (DIO-47)
+/.visual-diff/

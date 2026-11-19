@@ -240,6 +240,39 @@ rely on a system font: it works on a Mac and silently breaks in production.
 - Students never choose a font. Where the norms allow a choice (MFR: Arial
   or Times New Roman), the profile's default applies.
 
+### Quality gate (DIO-47)
+
+- **Golden corpus** (`src/lib/quality/goldenCorpus.ts`): one fictional
+  multi-file CV per launch specialty, shaped like the reference CVs (own
+  cover lines, lists after the Índice, a large casuística table, long lists,
+  images). It renders through `assembleMultiFileDocument`, the same pure step
+  `prepareDocument` uses, so it exercises production code. **Invented content
+  only, always.**
+- **Compliance checker** (`src/lib/compliance/checkPdf.ts`): reads the
+  *rendered PDF* with pdf.js and pdf-lib. It checks embedded fonts, text sizes
+  and colour, margins, footer content, page cap, cover fields and forbidden
+  images, and skips whatever the profile is `silentOn`. Messages never quote
+  document text.
+- `goldenCorpus.test.mts` fails on any violation not listed in
+  `KNOWN_VIOLATIONS`, and also on a listed one that no longer happens, so the
+  list stays honest. Each entry names the ticket that fixes it.
+- Every preview render runs the checker too (`complianceWarnings`). Findings
+  land in `renderWarnings` as `compliance-violation`. It never throws, and it
+  skips the image check because the watermark is an image.
+- **Visual regression** (`quality/visualRegression.test.mts`, `visualDiff.ts`):
+  every corpus page is rasterised with pdf.js on `@napi-rs/canvas` (60 dpi,
+  greyscale) and compared with an approved baseline in
+  `quality/baselines/<specialty>/page-NN.png` (16-level palette PNGs, about
+  100 KB per CV). The diff is tolerant on purpose (grey change > 48 and > 0.2%
+  of a page's pixels) so Mac-vs-Linux Chrome noise passes and a moved
+  paragraph or a new rule line fails; the page count must match exactly. On a
+  failure, actual/baseline/diff images go to `.visual-diff/` (gitignored, a CI
+  artifact). After an intended visual change, run `npm run test:visual:update`
+  and review the PNG diff in the PR. Baselines come only from the corpus.
+- Chromium **clips** overflowing content at the content box instead of drawing
+  it in the margin. So the PDF margin check can't see a too-wide table; that
+  has to be detected at layout time (DIO-48).
+
 ## Frontend
 
 - **Flow:** landing → guided wizard (upload → especialidade → capa) → two-pane
@@ -298,7 +331,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **330 tests passing** on `main`. Some suites launch a real
+Current baseline: **356 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions

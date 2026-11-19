@@ -62,7 +62,7 @@ export const COVER_TEMPLATES: readonly CoverTemplate[] = [
 .cover-classica .cover-date {
   margin: 0;
   font-size: 11pt;
-  color: #333;
+  color: #000;
 }
 `,
     buildHtml: ({ candidateName, dateLabel }) => `
@@ -96,12 +96,12 @@ export const COVER_TEMPLATES: readonly CoverTemplate[] = [
 .cover-moderna .cover-kicker {
   margin: 0;
   font-size: 13pt;
-  color: #333;
+  color: #000;
 }
 .cover-moderna .cover-date {
   margin-top: 60%;
   font-size: 11pt;
-  color: #333;
+  color: #000;
 }
 `,
     buildHtml: ({ candidateName, dateLabel }) => `
@@ -149,7 +149,7 @@ export const COVER_TEMPLATES: readonly CoverTemplate[] = [
 .cover-formal .cover-date {
   margin-top: 32px;
   font-size: 11pt;
-  color: #333;
+  color: #000;
 }
 `,
     buildHtml: ({ candidateName, dateLabel }) => `

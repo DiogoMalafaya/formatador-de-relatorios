@@ -11,7 +11,9 @@ const nextConfig: NextConfig = {
    * render (DIO-12/13's preview) 500'd. Listing it explicitly here is the
    * fix the resulting error message itself points to.
    */
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  // pdfjs-dist (DIO-47's compliance checker) loads its worker module by a
+  // path relative to its own location at runtime; bundling it breaks that.
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "pdfjs-dist"],
 
   /**
    * `serverExternalPackages` alone wasn't enough: it stops the bundler from
@@ -28,7 +30,11 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     // The embedded fonts (DIO-46) are read from disk at render time, which
     // tracing can't see either.
-    "/api/session/preview": ["./node_modules/@sparticuz/chromium/**/*", "./src/lib/pdf/fonts/**/*"],
+    "/api/session/preview": [
+      "./node_modules/@sparticuz/chromium/**/*",
+      "./src/lib/pdf/fonts/**/*",
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+    ],
     "/api/session/download": ["./node_modules/@sparticuz/chromium/**/*", "./src/lib/pdf/fonts/**/*"],
   },
 };
