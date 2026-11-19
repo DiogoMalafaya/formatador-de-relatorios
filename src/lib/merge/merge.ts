@@ -15,6 +15,8 @@
  *      file's internal heading hierarchy relative to its top.
  *   3. Every heading gets a stable anchor id, so a rendered page map
  *      (heading id → page, DIO-42) can fill the Índice's page numbers.
+ *   4. Body headings are numbered hierarchically ("1.", "1.2.", "1.2.3."),
+ *      replacing any number the student typed (DIO-53).
  *
  * Nothing is dropped: non-heading blocks pass through byte-identical, and the
  * merged counts are recomputed so the existing validations (images forbidden,
@@ -42,6 +44,7 @@ import {
 import type { CaptionListKind } from "./toc.ts";
 import { detectSourceCover, normalizeForMatch, splitMasterAfterToc } from "./frontMatter.ts";
 import { convertAbbreviationLists } from "./glossary.ts";
+import { SectionNumberer, sectionNumberHtml, stripManualNumber } from "./numbering.ts";
 import { sourceCoverReplacedWarning, staleCaptionListReplacedWarning, staleTocReplacedWarning } from "./warnings.ts";
 import { TableDesigner } from "../formatting/tables.ts";
 import { FigureDesigner } from "../formatting/figures.ts";
@@ -154,6 +157,13 @@ export function mergeDocuments(
     const depth = options.chapterDepthOverrides?.[sourceId] ?? options.chapterDepth ?? DEFAULT_CHAPTER_DEPTH;
     return clamp(depth, 1, MAX_HEADING_LEVEL - 1) + 1;
   };
+  // Tiers count from the shallowest chapter level any body part lands on;
+  // a file given a deeper override then numbers as a section of the
+  // chapter before it.
+  const bodySourceIds = [...(masterBodyBlocks.length > 0 ? [master.id] : []), ...chapters.map((chapter) => chapter.id)];
+  const bodyTopLevel = Math.min(...bodySourceIds.map(chapterLevelFor));
+  const numberer = new SectionNumberer(options.sectionNumbering ?? "decimal");
+
   const bodyPart = (sourceId: string, blocks: HtmlBlock[]) => {
     const targetLevel = chapterLevelFor(sourceId);
     const levels = blocks
@@ -176,6 +186,7 @@ export function mergeDocuments(
       partLevel: targetLevel,
       headings,
       assignHeadingId,
+      sectionNumbers: { numberer, topLevel: bodyTopLevel },
     });
   };
 
@@ -248,7 +259,7 @@ export function mergeDocuments(
   }
 
   // --- generated Índice at the stale TOC's position -----------------------
-  const tocEntries = buildTocEntries(headings, { maxLevel: options.tocMaxLevel });
+  const tocEntries = buildTocEntries(headings, { depth: options.tocDepth });
   const tocHtml = renderTocHtml(tocEntries);
 
   const mergedHtml = [
@@ -340,6 +351,8 @@ interface EmitContext {
   partLevel: number;
   headings: MergedHeading[];
   assignHeadingId: () => string;
+  /** Body only: numbers headings by tier below `topLevel` (DIO-53). */
+  sectionNumbers?: { numberer: SectionNumberer; topLevel: number };
 }
 
 /**
@@ -354,20 +367,35 @@ function emitBlocks(blocks: HtmlBlock[], context: EmitContext): string {
     const newLevel = clamp(Math.max(context.minLevel, level + context.levelShift), 1, MAX_HEADING_LEVEL);
     const id = context.assignHeadingId();
     const part = newLevel === context.partLevel;
+
+    let html = block.html;
+    let section: { tier: number; number?: string } | undefined;
+    if (context.sectionNumbers) {
+      section = context.sectionNumbers.numberer.next(newLevel - context.sectionNumbers.topLevel + 1);
+      // A typed number goes only where ours replaces it; past the numbered
+      // tiers the student's own numbering is all there is.
+      if (section.number) html = replaceHeadingContent(html, stripManualNumber(headingContent(html)));
+    }
+
     context.headings.push({
       id,
       level: newLevel,
-      text: blockText(block.html),
+      text: blockText(html),
       sourceId: context.sourceId,
       numbering: context.numbering,
       part,
+      ...(section ? { tier: section.tier } : {}),
+      ...(section?.number ? { number: section.number } : {}),
     });
     const classes = part
       ? context.numbering === "roman"
         ? [PART_TITLE_CLASS, FRONT_MATTER_TITLE_CLASS]
         : [PART_TITLE_CLASS]
       : [];
-    return rewriteHeadingBlock(block.html, newLevel, id, classes);
+    if (section?.number) {
+      html = replaceHeadingContent(html, sectionNumberHtml(section.number, SECTION_NUMBER_CLASS) + headingContent(html));
+    }
+    return rewriteHeadingBlock(html, newLevel, id, classes);
   });
   return parts.join("\n");
 }
@@ -376,6 +404,19 @@ function emitBlocks(blocks: HtmlBlock[], context: EmitContext): string {
 export const PART_TITLE_CLASS = "part-title";
 /** Front-matter part titles additionally start their own page (DIO-45). */
 export const FRONT_MATTER_TITLE_CLASS = "front-matter-title";
+/** The generated section number inside a body heading (DIO-53). */
+export const SECTION_NUMBER_CLASS = "section-number";
+
+const HEADING_PARTS = /^(<h[1-6][^>]*>)([\s\S]*)(<\/h[1-6]>\s*)$/i;
+
+function headingContent(html: string): string {
+  return HEADING_PARTS.exec(html)?.[2] ?? html;
+}
+
+function replaceHeadingContent(html: string, content: string): string {
+  const match = HEADING_PARTS.exec(html);
+  return match ? `${match[1]}${content}${match[3]}` : html;
+}
 
 function rewriteHeadingBlock(html: string, newLevel: number, id: string, classes: string[]): string {
   const classAttr = classes.length > 0 ? ` class="${classes.join(" ")}"` : "";

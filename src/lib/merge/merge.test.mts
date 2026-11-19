@@ -76,12 +76,12 @@ describe("mergeDocuments", () => {
   test("chapter top headings are demoted to h2 by default, internal hierarchy preserved", () => {
     const result = mergeDocuments(master, chapters);
     // h1 top heading → h2.
-    assert.match(result.document.html, /<h2 id="[^"]+"(?: class="[^"]*")?>SAÚDE MATERNA<\/h2>/);
+    assert.match(result.document.html, /<h2 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?SAÚDE MATERNA<\/h2>/);
     // Its internal h2 shifts with it → h3.
-    assert.match(result.document.html, /<h3 id="[^"]+"(?: class="[^"]*")?>Consultas de vigilância<\/h3>/);
+    assert.match(result.document.html, /<h3 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?Consultas de vigilância<\/h3>/);
     // A chapter whose top heading is already an h2 stays at the target level (shift 0).
-    assert.match(result.document.html, /<h2 id="[^"]+"(?: class="[^"]*")?>Saúde do Adulto<\/h2>/);
-    assert.match(result.document.html, /<h3 id="[^"]+"(?: class="[^"]*")?>Doença crónica<\/h3>/);
+    assert.match(result.document.html, /<h2 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?Saúde do Adulto<\/h2>/);
+    assert.match(result.document.html, /<h3 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?Doença crónica<\/h3>/);
     // No chapter heading survives as an h1 in the body.
     const bodyStart = result.document.html.indexOf("SAÚDE MATERNA");
     assert.ok(!result.document.html.slice(bodyStart).includes("<h1"));
@@ -91,10 +91,10 @@ describe("mergeDocuments", () => {
     const result = mergeDocuments(master, chapters, {
       chapterDepthOverrides: { "saude-materna": 2 },
     });
-    assert.match(result.document.html, /<h3 id="[^"]+"(?: class="[^"]*")?>SAÚDE MATERNA<\/h3>/);
-    assert.match(result.document.html, /<h4 id="[^"]+"(?: class="[^"]*")?>Consultas de vigilância<\/h4>/);
+    assert.match(result.document.html, /<h3 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?SAÚDE MATERNA<\/h3>/);
+    assert.match(result.document.html, /<h4 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?Consultas de vigilância<\/h4>/);
     // Other chapters keep the automatic default.
-    assert.match(result.document.html, /<h2 id="[^"]+"(?: class="[^"]*")?>Saúde Mental<\/h2>/);
+    assert.match(result.document.html, /<h2 id="[^"]+"(?: class="[^"]*")?>(?:<span class="section-number">[\d.]+<\/span> )?Saúde Mental<\/h2>/);
   });
 
   test("merge is deterministic — same inputs, byte-identical output", () => {
@@ -179,7 +179,7 @@ describe("mergeDocuments", () => {
       const nav = html.indexOf('<nav class="generated-toc">');
       assert.ok(html.indexOf("Dedicatória") < nav);
       assert.ok(nav < html.indexOf("Lista de Abreviaturas"));
-      assert.ok(html.indexOf("Lista de Tabelas") < html.indexOf(">Identificação<"));
+      assert.ok(html.indexOf("Lista de Tabelas") < html.indexOf(" Identificação</h2>"));
     });
 
     test("the master's cover text is dropped, its name kept, and the student told", () => {
@@ -195,10 +195,10 @@ describe("mergeDocuments", () => {
     test("part titles carry the part class, in the headings and the Índice", () => {
       const result = mergeDocuments(listsMaster, chapters);
       const html = result.document.html;
-      assert.match(html, /<h2 id="[^"]+" class="part-title">Saúde Mental<\/h2>/);
+      assert.match(html, /<h2 id="[^"]+" class="part-title"><span class="section-number">\d+\.<\/span> Saúde Mental<\/h2>/);
       assert.match(html, /<h1 id="[^"]+" class="part-title front-matter-title">Lista de Tabelas<\/h1>/);
-      assert.match(html, /<h3 id="[^"]+">Contactos<\/h3>/, "subsections are not part titles");
-      assert.match(html, /toc-depth-2 toc-part"><span class="toc-entry-text">Saúde Mental/);
+      assert.match(html, /<h3 id="[^"]+"><span class="section-number">[\d.]+<\/span> Contactos<\/h3>/, "subsections are not part titles");
+      assert.match(html, /toc-depth-2 toc-tier-1 toc-part"><span class="toc-entry-text"><span class="toc-number">\d+\.<\/span> Saúde Mental/);
     });
   });
 

@@ -12,6 +12,7 @@ import type { ParsedDocument } from "../formatting/parseDocx.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { TableCaption } from "../formatting/tables.ts";
 import type { NumberedCaption } from "../formatting/captions.ts";
+import type { SectionNumberingStyle } from "./numbering.ts";
 
 /** One source document in the merge: the master or one ordered chapter. */
 export interface MergeSource {
@@ -48,6 +49,13 @@ export interface MergedHeading {
    * title. Themes style these as one family; carries `class="part-title"`.
    */
   part?: boolean;
+  /**
+   * Body headings only (DIO-53): 1 = chapter, 2 = section, 3 = subsection,
+   * counted from the body's top level, never skipping one.
+   */
+  tier?: number;
+  /** The section number shown before the heading ("1.2."), body headings to tier 3 only. */
+  number?: string;
 }
 
 /** One generated Índice entry. Page number is a placeholder until pass 2 fills it. */
@@ -60,6 +68,10 @@ export interface TocEntry {
   numbering: PageNumbering;
   /** Mirrors `MergedHeading.part`, so the Índice styles part titles like the headings. */
   part?: boolean;
+  /** Mirrors `MergedHeading.tier`: the Índice is styled by it (DIO-53). */
+  tier?: number;
+  /** Mirrors `MergedHeading.number`. */
+  number?: string;
 }
 
 export interface MergeOptions {
@@ -74,8 +86,14 @@ export interface MergeOptions {
   chapterDepth?: number;
   /** Per-file override of `chapterDepth`, keyed by `MergeSource.id`. */
   chapterDepthOverrides?: Record<string, number>;
-  /** Deepest merged heading level listed in the generated Índice. Default 3. */
-  tocMaxLevel?: number;
+  /**
+   * How many levels the generated Índice lists (DIO-53): body headings to
+   * this tier (1 = chapters only, 3 = down to subsections), front-matter
+   * headings to this heading level. Default 3.
+   */
+  tocDepth?: number;
+  /** Section numbering for body headings (DIO-53). Default "decimal". */
+  sectionNumbering?: SectionNumberingStyle;
   /** Prefix for generated heading anchor ids. Default "merged-heading". */
   headingIdPrefix?: string;
 }

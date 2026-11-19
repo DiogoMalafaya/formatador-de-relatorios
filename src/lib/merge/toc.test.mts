@@ -91,7 +91,7 @@ describe("Índice generation and page-number fill", () => {
     // Entry text and dotted-leader slot are in place for a chapter entry.
     assert.match(
       filled.html,
-      /<span class="toc-entry-text">SAÚDE MATERNA<\/span><span class="toc-leader"><\/span><span class="toc-page">\d+<\/span>/,
+      /<span class="toc-entry-text"><span class="toc-number">\d+\.<\/span> SAÚDE MATERNA<\/span><span class="toc-leader"><\/span><span class="toc-page">\d+<\/span>/,
     );
   });
 
@@ -101,12 +101,12 @@ describe("Índice generation and page-number fill", () => {
     assert.equal(byText.get("Dedicatória")?.depth, 1);
     assert.equal(byText.get("SAÚDE MATERNA")?.depth, 2);
     assert.equal(byText.get("Consultas de vigilância")?.depth, 3);
-    assert.match(result.document.html, /<li class="toc-entry toc-depth-3">/);
+    assert.match(result.document.html, /<li class="toc-entry toc-depth-3 toc-tier-2">/);
   });
 
-  test("headings deeper than tocMaxLevel are left out of the Índice", () => {
-    const result = mergeDocuments(master, chapters, { tocMaxLevel: 2 });
-    assert.ok(result.tocEntries.every((entry) => entry.depth <= 2));
+  test("headings deeper than tocDepth are left out of the Índice", () => {
+    const result = mergeDocuments(master, chapters, { tocDepth: 1 });
+    assert.ok(result.tocEntries.every((entry) => (entry.tier ?? entry.depth) <= 1));
     assert.ok(!result.tocEntries.some((entry) => entry.text === "Consultas de vigilância"));
   });
 
