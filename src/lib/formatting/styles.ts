@@ -12,6 +12,7 @@ import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { fontFaceCss, fontStack as embeddedFontStack } from "../pdf/fonts.ts";
 import { IMAGE_CSS } from "./images.ts";
 import { FIGURE_CAPTION_CSS } from "./figures.ts";
+import { BODY_TYPOGRAPHY_CSS } from "./typography.ts";
 
 export interface RuleSetChoices {
   fontFamily: FontFamily;
@@ -54,6 +55,8 @@ body {
   background: ${ruleSet.page.color};
   line-height: ${ruleSet.lineSpacing};
 }
+
+${BODY_TYPOGRAPHY_CSS}
 
 h1, h2, h3 {
   font-family: ${fontStack};

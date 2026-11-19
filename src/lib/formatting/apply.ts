@@ -25,6 +25,7 @@ import { getRuleSet } from "./ruleSet.ts";
 import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { buildRuleSetCss, resolveChoices } from "./styles.ts";
 import { estimatePageCount } from "./pageEstimate.ts";
+import { applyBodyTypography } from "./typography.ts";
 import {
   imageLowResolutionWarning,
   imageOmittedWarning,
@@ -116,7 +117,9 @@ export function formatParsedDocument(
   }
 
   return {
-    html: parsed.html,
+    // Last step over the student's content (DIO-52): everything that reads
+    // the text (merge, captions, name extraction) has already run.
+    html: applyBodyTypography(parsed.html),
     css: buildRuleSetCss(ruleSet, choices),
     warnings,
     ruleSet,

@@ -14,7 +14,8 @@ describe("mergeCoverWithDocument", () => {
     const merged = mergeCoverWithDocument(document, { candidateName: document.extractedCandidateName });
 
     const coverIndex = merged.html.indexOf('class="cover-page');
-    const bodyIndex = merged.html.indexOf("Experiência profissional");
+    // Body prose carries soft hyphens (DIO-52); a capitalised word has none.
+    const bodyIndex = merged.html.indexOf("Experiência");
     assert.ok(coverIndex >= 0 && coverIndex < bodyIndex, "cover must come before the CV body");
     assert.match(merged.html, /Ana Pereira/);
     assert.match(merged.css, /page-break-after: always/);
