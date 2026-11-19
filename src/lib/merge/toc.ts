@@ -14,6 +14,7 @@ import { escapeHtml } from "../html.ts";
 import { blockText, headingLevelOf } from "./blocks.ts";
 import type { HtmlBlock } from "./blocks.ts";
 import type { MergedHeading, PageNumbering, TocEntry } from "./types.ts";
+import { sectionNumberHtml } from "./numbering.ts";
 
 /* ------------------------------ detection ------------------------------ */
 
@@ -84,29 +85,43 @@ function isTocEntryBlock(block: HtmlBlock): boolean {
 /* ------------------------------ generation ----------------------------- */
 
 export interface GenerateTocOptions {
-  /** Deepest merged heading level included. Default 3. */
-  maxLevel?: number;
+  /**
+   * How deep the Índice goes (DIO-53): body headings to this tier
+   * (chapter = 1), front-matter headings to this level. Default 3.
+   */
+  depth?: number;
   /** Title of the generated Índice. Default "Índice". */
   titlePt?: string;
 }
 
-const DEFAULT_TOC_MAX_LEVEL = 3;
+export const DEFAULT_TOC_DEPTH = 3;
 
 /** Selects which merged headings appear in the Índice, preserving document order. */
 export function buildTocEntries(
   headings: MergedHeading[],
   options: GenerateTocOptions = {},
 ): TocEntry[] {
-  const maxLevel = options.maxLevel ?? DEFAULT_TOC_MAX_LEVEL;
+  const depth = options.depth ?? DEFAULT_TOC_DEPTH;
   return headings
-    .filter((heading) => heading.level <= maxLevel)
+    .filter((heading) => (heading.tier ?? heading.level) <= depth)
     .map((heading) => ({
       headingId: heading.id,
       depth: heading.level,
       text: heading.text,
       numbering: heading.numbering,
       ...(heading.part ? { part: true } : {}),
+      ...(heading.tier !== undefined ? { tier: heading.tier } : {}),
+      ...(heading.number ? { number: heading.number } : {}),
     }));
+}
+
+function tocEntryClasses(entry: TocEntry): string {
+  return [
+    "toc-entry",
+    `toc-depth-${entry.depth}`,
+    ...(entry.tier !== undefined ? [`toc-tier-${entry.tier}`] : []),
+    ...(entry.part ? ["toc-part"] : []),
+  ].join(" ");
 }
 
 /**
@@ -119,8 +134,10 @@ export function renderTocHtml(entries: TocEntry[], options: GenerateTocOptions =
   const items = entries
     .map(
       (entry) =>
-        `<li class="toc-entry toc-depth-${entry.depth}${entry.part ? " toc-part" : ""}">` +
-        `<span class="toc-entry-text">${escapeHtml(entry.text)}</span>` +
+        `<li class="${tocEntryClasses(entry)}">` +
+        `<span class="toc-entry-text">` +
+        (entry.number ? sectionNumberHtml(escapeHtml(entry.number), "toc-number") : "") +
+        `${escapeHtml(entry.text)}</span>` +
         `<span class="toc-leader"></span>` +
         tocPagePlaceholder(entry.headingId, entry.numbering) +
         `</li>`,
@@ -206,6 +223,24 @@ export const GENERATED_TOC_CSS = `
 .generated-toc .toc-depth-4 { padding-left: 3em; }
 .generated-toc .toc-depth-5 { padding-left: 4.5em; }
 .generated-toc .toc-depth-6 { padding-left: 6em; }
+
+/* Styled by level (DIO-53): chapters bold with air above, sections and
+   subsections indented under them. Weight and indentation only: the size
+   stays the body's, which explicit profiles fix. Numbers sit in a column
+   per tier so titles of one level line up. */
+.generated-toc .toc-part { font-weight: bold; margin-top: 0.45em; }
+.generated-toc .toc-tier-1 { padding-left: 0; font-weight: bold; margin-top: 0.45em; }
+.generated-toc .toc-tier-2 { padding-left: 1.85em; }
+.generated-toc .toc-tier-3 { padding-left: 4.1em; }
+.generated-toc .toc-tier-4 { padding-left: 7.15em; }
+.generated-toc .toc-number { display: inline-block; }
+.generated-toc .toc-tier-1 .toc-number { min-width: 1.6em; }
+.generated-toc .toc-tier-2 .toc-number { min-width: 2em; }
+.generated-toc .toc-tier-3 .toc-number { min-width: 2.8em; }
+.generated-toc .toc-entry-text { flex: 0 1 auto; }
+
+/* Numbers in headings (DIO-53). */
+.section-number { font-variant-numeric: tabular-nums; }
 /* Each generated caption list (DIO-48/49) is its own front-matter page wherever it sits. */
 .generated-caption-list { break-before: page; page-break-before: always; }
 

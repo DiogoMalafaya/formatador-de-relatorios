@@ -161,7 +161,9 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
       paragraph("Correio eletrónico: exemplo@exemplo.pt"),
     ]),
     source("resumo", "02 Resumo.docx", [
-      heading(1, flavour.summaryTitle),
+      // Typed numbers, mixed across files as in the reference CVs; the
+      // merge replaces them with one scheme (DIO-53).
+      heading(1, `2. ${flavour.summaryTitle}`),
       paragraph(prose("todo o percurso formativo")),
       paragraph("Tabela 1 – Percurso até ao internato"),
       simpleTable([
@@ -173,10 +175,10 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
       ]),
     ]),
     source("percurso", "03 Percurso formativo.docx", [
-      heading(1, "Percurso formativo"),
-      heading(2, "Formação académica"),
+      heading(1, "3 - Percurso formativo"),
+      heading(2, "3.1. Formação académica"),
       paragraph(prose("o Mestrado Integrado em Medicina")),
-      heading(2, "Cronograma do internato"),
+      heading(2, "3.2 Cronograma do internato"),
       simpleTable([
         ["Ano", "1.º semestre", "2.º semestre"],
         ...[2021, 2022, 2023, 2024, 2025].map((year, i) => [String(year), areas[i % areas.length], areas[(i + 1) % areas.length]]),
@@ -186,7 +188,7 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
       ...areas.map((area) => paragraph(prose(`o estágio de ${area.toLowerCase()}`))),
     ]),
     source("assistencial", "04 Atividade assistencial.docx", [
-      heading(1, "ATIVIDADE ASSISTENCIAL"),
+      heading(1, "IV. ATIVIDADE ASSISTENCIAL"),
       heading(2, "Casuística"),
       paragraph(prose("consultas e internamento")),
       paragraph("Tabela 3 – Casuística por área e diagnóstico"),
@@ -203,7 +205,7 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
     ]),
     source("valorizacao", "05 Valorização profissional.docx", [
       heading(1, "Valorização profissional"),
-      heading(2, "Cursos"),
+      heading(2, "1.1. Cursos"),
       ...Array.from({ length: 15 }, (_, i) =>
         bulletItem(`Curso fictício n.º ${i + 1} — Sociedade Inventada, Lisboa, ${2021 + (i % 5)} (Doc. ${i + 20})`),
       ),

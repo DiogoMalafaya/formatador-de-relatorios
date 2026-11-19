@@ -401,6 +401,12 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
   platform-dependent (Mac yes, serverless Linux no). Capitalised words, tables,
   headings and anything with a class are never hyphenated. "Label: value" lines
   get a bold label only in runs of ≥ 2. Size and line spacing are untouched.
+- **Section numbering** (DIO-53, `src/lib/merge/numbering.ts`): body headings
+  are numbered in the merge ("1.", "1.2.", "1.2.3.", by tier below the body's
+  top level, never skipping one); typed numbers ("3.1.", "IV -") are stripped
+  first, and only where ours replaces them. Front matter is never numbered.
+  The Índice lists to `tocDepth` tiers (default 3), styled by `toc-tier-N`.
+  `sectionNumbering: "roman-chapters" | "none"` exists for the themes (DIO-56).
 - **The merge path has only ever run against synthesised fixtures.** DIO-20
   should exercise it with a real multi-file corpus before launch.
 - The PRD for the DIO-37…42 initiative is at
