@@ -19,11 +19,29 @@ describe("applyFormatting", () => {
     assert.match(result.html, /<h1>Formação<\/h1>/);
   });
 
-  test("warns on an embedded image without stripping it where the norms forbid images (MFR)", async () => {
-    const buffer = await buildDocx([imageParagraph()]);
+  test("removes an embedded image where the norms forbid images (MFR), with a warning (DIO-49)", async () => {
+    const buffer = await buildDocx([paragraph("Antes."), imageParagraph(), imageParagraph(), paragraph("Depois.")]);
     const result = await applyFormatting(buffer, { ruleSetId: "mfr" });
-    assert.ok(result.warnings.some((w) => w.code === "image-detected"));
-    assert.match(result.html, /<img /);
+    assert.deepEqual(
+      result.warnings.filter((w) => w.code === "image-omitted").map((w) => w.messagePt.slice(0, 22)),
+      ["Removemos a 1.ª imagem", "Removemos a 2.ª imagem"],
+    );
+    assert.doesNotMatch(result.html, /<img/);
+    assert.doesNotMatch(result.html, /omitted-image/, "no placeholder outside the preview");
+    assert.match(result.html, /<p>Antes\.<\/p>\s*<p>Depois\.<\/p>/, "the emptied paragraphs go too");
+  });
+
+  test("the preview marks where each forbidden image was", async () => {
+    const buffer = await buildDocx([imageParagraph()]);
+    const result = await applyFormatting(buffer, { ruleSetId: "mfr", imagePlaceholders: true });
+    assert.doesNotMatch(result.html, /<img/);
+    assert.match(result.html, /<span class="omitted-image"[^>]*>Imagem removida/);
+  });
+
+  test("keeps images where the profile allows them, with an anchor", async () => {
+    const buffer = await buildDocx([imageParagraph()]);
+    const result = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
+    assert.match(result.html, /<p class="figure"><img [^>]*id="doc-img-0"/);
   });
 
   test("warns on a table where the norms restrict tables to activity schematization (MFR)", async () => {
@@ -58,8 +76,9 @@ describe("applyFormatting", () => {
     const buffer = await buildDocx([imageParagraph(), simpleTable([["Ano", "Rotação"]])]);
     const house = await applyFormatting(buffer, { ruleSetId: HOUSE_RULE_SET_ID });
     const mfr = await applyFormatting(buffer, { ruleSetId: "mfr" });
-    assert.deepEqual(house.warnings.map((w) => w.code), []);
-    assert.deepEqual(mfr.warnings.map((w) => w.code).sort(), ["image-detected", "table-present"]);
+    // The fixture image is 1px placed at 10px: soft wherever it's kept.
+    assert.deepEqual(house.warnings.map((w) => w.code), ["image-low-resolution"]);
+    assert.deepEqual(mfr.warnings.map((w) => w.code).sort(), ["image-omitted", "table-present"]);
   });
 
   test("Pediatria's profile sets Verdana 10 and its own margins", async () => {

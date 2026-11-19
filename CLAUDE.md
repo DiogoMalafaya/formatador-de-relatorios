@@ -373,6 +373,12 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
   renumbered above each table and a generated **Lista de tabelas** with exact
   pages. Table colours are provisional tokens (`TABLE_TOKENS` in `styles.ts`)
   until the house themes (DIO-56). The hero samples predate this and are stale.
+- **Student images** (DIO-49, `src/lib/formatting/images.ts`): kept at their Word
+  size (scaled down to the text width, never up) unless the profile forbids
+  them. Under MFR they're removed (one `image-omitted` warning per image; a
+  placeholder only in the preview, via `prepareDocument(…, { imagePlaceholders })`).
+  Kept images under 150 dpi at their placed size warn with file + page.
+  "Figura N" captions feed a generated **Lista de figuras**, like tables.
 - **The merge path has only ever run against synthesised fixtures.** DIO-20
   should exercise it with a real multi-file corpus before launch.
 - The PRD for the DIO-37…42 initiative is at

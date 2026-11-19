@@ -5,7 +5,7 @@ import type { ComplianceCheckId } from "./checkPdf.ts";
 import { renderPdf } from "../pdf/render.ts";
 import { applyFormatting } from "../formatting/apply.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
-import { getRuleSet } from "../formatting/ruleSet.ts";
+import { getRuleSet, HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { readRegularFontFile } from "../pdf/fonts.ts";
@@ -93,8 +93,17 @@ describe("checkPdfCompliance (DIO-47)", () => {
   });
 
   test("catches images where the norms forbid them", async () => {
-    const found = await violations(await mfrDocument([heading(1, "Formação"), imageParagraph()]));
+    // The pipeline removes them under MFR (DIO-49), so the image is slipped
+    // in after formatting: the checker is the backstop if that ever fails.
+    const document = await mfrDocument([heading(1, "Formação")]);
+    const kept = await applyFormatting(await buildDocx([imageParagraph()]), { ruleSetId: HOUSE_RULE_SET_ID });
+    const found = await violations({ ...document, html: `${document.html}\n${kept.html}` });
     assert.ok(found.includes("images-forbidden"), found.join());
+  });
+
+  test("an MFR document through the pipeline carries no image", async () => {
+    const found = await violations(await mfrDocument([heading(1, "Formação"), imageParagraph()]));
+    assert.ok(!found.includes("images-forbidden"), found.join());
   });
 
   test("catches a document over the page cap", async () => {

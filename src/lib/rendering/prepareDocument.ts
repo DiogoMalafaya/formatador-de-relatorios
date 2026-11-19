@@ -12,6 +12,9 @@ import { mergeCoverWithDocument } from "../covers/merge.ts";
 import { mergeDocuments, GENERATED_TOC_CSS } from "../merge/index.ts";
 import type { MergedHeading, MergeSource } from "../merge/types.ts";
 import type { TableCaption } from "../formatting/tables.ts";
+import type { NumberedCaption } from "../formatting/captions.ts";
+import { applyImagePolicy } from "../formatting/images.ts";
+import type { LowResolutionImage } from "../formatting/images.ts";
 import { getMasterSource, getOrderedSources } from "../session/sources.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 import type { SessionRecord } from "../session/types.ts";
@@ -35,7 +38,23 @@ export interface PreparedDocument {
   merge?: {
     headings: MergedHeading[];
     tableCaptions: TableCaption[];
+    figureCaptions: NumberedCaption[];
+    /** Kept images below print resolution; the render names their page (DIO-49). */
+    lowResolutionImages: AttributedLowResolutionImage[];
   };
+}
+
+/** A low-resolution image and the uploaded file it came from. */
+export interface AttributedLowResolutionImage extends LowResolutionImage {
+  sourceFilename: string;
+}
+
+export interface PrepareOptions {
+  /**
+   * The watermarked preview marks where each forbidden image was removed;
+   * the final PDF must not (DIO-49).
+   */
+  imagePlaceholders?: boolean;
 }
 
 /**
@@ -49,7 +68,7 @@ export interface PreparedDocument {
  * principal with the ordered chapters (DIO-41), and formats the merged
  * model.
  */
-export async function prepareDocument(session: SessionRecord): Promise<PreparedDocument> {
+export async function prepareDocument(session: SessionRecord, options: PrepareOptions = {}): Promise<PreparedDocument> {
   // All reads of uploaded files go through the sources helper (DIO-40):
   // it owns the `{sessionId}/source/{index}.docx` layout and still
   // understands a pre-multi-file session's single `upload` as source 0.
@@ -67,7 +86,10 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
       throw new DocumentNotReadyError("uploaded file is no longer in storage");
     }
 
-    const formatted = await applyFormatting(sourceBuffer, { ruleSetId });
+    const formatted = await applyFormatting(sourceBuffer, {
+      ruleSetId,
+      imagePlaceholders: options.imagePlaceholders ?? false,
+    });
     return withCover(formatted, { coverId: session.coverId });
   }
 
@@ -91,6 +113,7 @@ export async function prepareDocument(session: SessionRecord): Promise<PreparedD
     masterPosition: sources.findIndex((source) => source.index === master.index),
     ruleSetId,
     coverId: session.coverId,
+    imagePlaceholders: options.imagePlaceholders ?? false,
   });
 }
 
@@ -109,6 +132,8 @@ export interface AssembleOptions {
   coverId?: string;
   /** Cover date; defaults to today. Fixed by the golden corpus for stable output. */
   dateLabel?: string;
+  /** See `PrepareOptions.imagePlaceholders`. */
+  imagePlaceholders?: boolean;
 }
 
 /**
@@ -125,9 +150,23 @@ export function assembleMultiFileDocument(options: AssembleOptions): PreparedDoc
     ),
   );
 
+  // Images are kept or removed per source, before the merge, while "which
+  // file" is still known (DIO-49). Counts stay those of the original parse,
+  // so the omitted-image warnings above match what was removed.
+  const lowResolutionImages: AttributedLowResolutionImage[] = [];
+  const policed = sources.map((source, position) => {
+    const policy = applyImagePolicy(source.document.html, source.document.images, {
+      ruleSet,
+      anchorPrefix: `src${position}`,
+      placeholders: options.imagePlaceholders ?? false,
+    });
+    lowResolutionImages.push(...policy.lowResolution.map((image) => ({ ...image, sourceFilename: source.filename })));
+    return { ...source, document: { ...source.document, html: policy.html } };
+  });
+
   const merged = mergeDocuments(
-    sources[masterPosition],
-    sources.filter((_, index) => index !== masterPosition),
+    policed[masterPosition],
+    policed.filter((_, index) => index !== masterPosition),
   );
 
   const formatted = formatParsedDocument(merged.document, { ruleSetId }, {
@@ -144,14 +183,19 @@ export function assembleMultiFileDocument(options: AssembleOptions): PreparedDoc
       extractedCandidateName: merged.candidateName ?? formatted.extractedCandidateName,
     },
     { coverId: options.coverId, dateLabel: options.dateLabel },
-    { headings: merged.headings, tableCaptions: merged.tableCaptions },
+    {
+      headings: merged.headings,
+      tableCaptions: merged.tableCaptions,
+      figureCaptions: merged.figureCaptions,
+      lowResolutionImages,
+    },
   );
 }
 
 function withCover(
   formatted: FormattedDocument,
   cover: { coverId?: string; dateLabel?: string },
-  merge?: { headings: MergedHeading[]; tableCaptions: TableCaption[] },
+  merge?: PreparedDocument["merge"],
 ): PreparedDocument {
   const withCoverDocument = mergeCoverWithDocument(formatted, {
     coverId: cover.coverId,

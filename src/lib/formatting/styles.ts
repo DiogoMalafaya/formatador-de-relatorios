@@ -10,6 +10,8 @@
 
 import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { fontFaceCss, fontStack as embeddedFontStack } from "../pdf/fonts.ts";
+import { IMAGE_CSS } from "./images.ts";
+import { FIGURE_CAPTION_CSS } from "./figures.ts";
 
 export interface RuleSetChoices {
   fontFamily: FontFamily;
@@ -68,6 +70,8 @@ h3 {
 }
 
 ${buildTableCss(ruleSet)}
+${IMAGE_CSS}
+${FIGURE_CAPTION_CSS}
 `.trim();
 }
 

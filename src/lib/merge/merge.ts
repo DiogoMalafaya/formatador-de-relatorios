@@ -34,14 +34,17 @@ import type { HtmlBlock } from "./blocks.ts";
 import {
   buildTocEntries,
   detectStaleToc,
-  isTableListTitle,
-  renderTableListHtml,
+  CAPTION_LIST_TITLES_PT,
+  isCaptionListTitle,
+  renderCaptionListHtml,
   renderTocHtml,
-  TABLE_LIST_TITLE_PT,
 } from "./toc.ts";
+import type { CaptionListKind } from "./toc.ts";
 import { detectSourceCover, splitMasterAfterToc } from "./frontMatter.ts";
-import { sourceCoverReplacedWarning, staleTableListReplacedWarning, staleTocReplacedWarning } from "./warnings.ts";
+import { sourceCoverReplacedWarning, staleCaptionListReplacedWarning, staleTocReplacedWarning } from "./warnings.ts";
 import { TableDesigner } from "../formatting/tables.ts";
+import { FigureDesigner } from "../formatting/figures.ts";
+import type { NumberedCaption } from "../formatting/captions.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { ParsedDocument } from "../formatting/parseDocx.ts";
 import type {
@@ -71,6 +74,7 @@ export function mergeDocuments(
       tocEntries: [],
       replacedStaleToc: false,
       tableCaptions: [],
+      figureCaptions: [],
       warnings: [],
       passthrough: true,
     };
@@ -82,9 +86,12 @@ export function mergeDocuments(
   let nextHeadingIndex = 0;
 
   const assignHeadingId = () => `${headingIdPrefix}-${nextHeadingIndex++}`;
-  // One designer for the whole document, called in document order, so table
-  // captions are numbered across chapter files (DIO-48).
+  // One designer per caption kind for the whole document, called in document
+  // order, so captions are numbered across chapter files (DIO-48/49).
   const tables = new TableDesigner();
+  const figures = new FigureDesigner();
+  const design = (blocks: HtmlBlock[], numbering: PageNumbering) =>
+    figures.designBlocks(tables.designBlocks(blocks, numbering), numbering);
 
   // --- master: drop its cover, split front matter from body ---------------
   let masterBlocks = splitTopLevelBlocks(master.document.html);
@@ -112,17 +119,17 @@ export function mergeDocuments(
     frontMatterBlocks = masterBlocks;
   }
 
-  // The master's own Lista de tabelas is stale for the same reason its Índice
-  // is: fenced here, and swapped for the generated one below when there are
-  // captions to list.
-  const staleList = fenceTableListSection(frontMatterBlocks) ?? fenceTableListSection(afterTocFrontMatterBlocks);
-  if (staleList) {
-    if (staleList.blocks === frontMatterBlocks) frontMatterBlocks = staleList.fenced;
-    else afterTocFrontMatterBlocks = staleList.fenced;
+  // The master's own Lista de tabelas/figuras is stale for the same reason
+  // its Índice is: fenced here, and swapped for the generated one below when
+  // there are captions to list.
+  for (const kind of CAPTION_LIST_KINDS) {
+    const fenced = fenceCaptionListSection(frontMatterBlocks, kind);
+    if (fenced) frontMatterBlocks = fenced;
+    else afterTocFrontMatterBlocks = fenceCaptionListSection(afterTocFrontMatterBlocks, kind) ?? afterTocFrontMatterBlocks;
   }
 
   const frontMatter = (blocks: HtmlBlock[]) =>
-    emitBlocks(tables.designBlocks(blocks, "roman"), {
+    emitBlocks(design(blocks, "roman"), {
       sourceId: master.id,
       numbering: "roman",
       levelShift: 0,
@@ -151,7 +158,7 @@ export function mergeDocuments(
     // slots in at the chapter level.
     const topHeadingLevel = levels.length > 0 ? Math.min(...levels) : undefined;
 
-    return emitBlocks(tables.designBlocks(blocks, "arabic"), {
+    return emitBlocks(design(blocks, "arabic"), {
       sourceId,
       numbering: "arabic",
       // A part without any heading has nothing to demote; its content still
@@ -168,7 +175,7 @@ export function mergeDocuments(
 
   // Emission order is document order, so `headings` stays in document order.
   let frontMatterHtml = frontMatter(frontMatterBlocks);
-  // Where the generated Lista's heading goes in `headings` when there's no
+  // Where a generated list's heading goes in `headings` when there's no
   // stale list to take the place of: right after the Índice.
   const afterTocHeadingIndex = headings.length;
   let afterTocFrontMatterHtml = frontMatter(afterTocFrontMatterBlocks);
@@ -177,49 +184,61 @@ export function mergeDocuments(
     bodyPart(chapter.id, splitTopLevelBlocks(chapter.document.html)),
   );
 
-  // --- generated Lista de tabelas (DIO-48) ---------------------------------
+  // --- generated Lista de tabelas / figuras (DIO-48/49) --------------------
   // Where the master had its own, in that place; otherwise right after the
-  // Índice. A stale list is kept as the student wrote it when we found no
-  // caption to list: replacing it with nothing would lose their content.
-  const tableCaptions = tables.captions;
-  const tableListHeading: MergedHeading = {
-    id: `${headingIdPrefix}-table-list`,
-    level: 1,
-    text: TABLE_LIST_TITLE_PT,
-    sourceId: master.id,
-    numbering: "roman",
-    part: true,
+  // Índice (tables, then figures). A stale list is kept as the student wrote
+  // it when we found no caption to list: replacing it with nothing would lose
+  // their content.
+  const captionsByKind: Record<CaptionListKind, NumberedCaption[]> = {
+    table: tables.captions,
+    figure: figures.captions,
   };
-  const tableListHtml =
-    tableCaptions.length > 0
-      ? renderTableListHtml(
-          tableCaptions.map((caption) => ({ captionId: caption.id, text: caption.text, numbering: caption.numbering })),
-          { headingId: tableListHeading.id },
-        )
-      : "";
-  let tableListPlaced = false;
-  const resolveFence = (html: string) => {
-    const start = html.indexOf(STALE_LIST_START);
-    const end = html.indexOf(STALE_LIST_END);
-    if (start === -1 || end === -1) return html;
-    if (tableListHtml.length === 0) {
-      return html.replace(STALE_LIST_START, "").replace(STALE_LIST_END, "");
+  const unplacedListsHtml: string[] = [];
+  let unplacedHeadingIndex = afterTocHeadingIndex;
+  for (const kind of CAPTION_LIST_KINDS) {
+    const captions = captionsByKind[kind];
+    const listHeading: MergedHeading = {
+      id: `${headingIdPrefix}-${kind}-list`,
+      level: 1,
+      text: CAPTION_LIST_TITLES_PT[kind],
+      sourceId: master.id,
+      numbering: "roman",
+      part: true,
+    };
+    const listHtml =
+      captions.length > 0
+        ? renderCaptionListHtml(
+            kind,
+            captions.map((caption) => ({ captionId: caption.id, text: caption.text, numbering: caption.numbering })),
+            { headingId: listHeading.id },
+          )
+        : "";
+
+    let placed = false;
+    const resolveFence = (html: string) => {
+      const [startMarker, endMarker] = fenceMarkers(kind);
+      const start = html.indexOf(startMarker);
+      const end = html.indexOf(endMarker);
+      if (start === -1 || end === -1) return html;
+      if (listHtml.length === 0) return html.replace(startMarker, "").replace(endMarker, "");
+      const region = html.slice(start, end);
+      const droppedIds = new Set([...region.matchAll(/<h[1-6] id="([^"]+)"/g)].map((match) => match[1]));
+      const firstDropped = headings.findIndex((heading) => droppedIds.has(heading.id));
+      for (let i = headings.length - 1; i >= 0; i -= 1) {
+        if (droppedIds.has(headings[i].id)) headings.splice(i, 1);
+      }
+      headings.splice(firstDropped === -1 ? headings.length : firstDropped, 0, listHeading);
+      placed = true;
+      warnings.push(staleCaptionListReplacedWarning(kind));
+      return `${html.slice(0, start)}${listHtml}${html.slice(end + endMarker.length)}`;
+    };
+    frontMatterHtml = resolveFence(frontMatterHtml);
+    afterTocFrontMatterHtml = resolveFence(afterTocFrontMatterHtml);
+    if (listHtml.length > 0 && !placed) {
+      headings.splice(unplacedHeadingIndex, 0, listHeading);
+      unplacedHeadingIndex += 1;
+      unplacedListsHtml.push(listHtml);
     }
-    const region = html.slice(start, end);
-    const droppedIds = new Set([...region.matchAll(/<h[1-6] id="([^"]+)"/g)].map((match) => match[1]));
-    const firstDropped = headings.findIndex((heading) => droppedIds.has(heading.id));
-    for (let i = headings.length - 1; i >= 0; i -= 1) {
-      if (droppedIds.has(headings[i].id)) headings.splice(i, 1);
-    }
-    headings.splice(firstDropped === -1 ? headings.length : firstDropped, 0, tableListHeading);
-    tableListPlaced = true;
-    warnings.push(staleTableListReplacedWarning());
-    return `${html.slice(0, start)}${tableListHtml}${html.slice(end + STALE_LIST_END.length)}`;
-  };
-  frontMatterHtml = resolveFence(frontMatterHtml);
-  afterTocFrontMatterHtml = resolveFence(afterTocFrontMatterHtml);
-  if (tableListHtml.length > 0 && !tableListPlaced) {
-    headings.splice(afterTocHeadingIndex, 0, tableListHeading);
   }
 
   // --- generated Índice at the stale TOC's position -----------------------
@@ -229,7 +248,7 @@ export function mergeDocuments(
   const mergedHtml = [
     frontMatterHtml,
     tocHtml,
-    tableListPlaced ? "" : tableListHtml,
+    ...unplacedListsHtml,
     afterTocFrontMatterHtml,
     masterBodyHtml,
     ...chapterHtmlParts,
@@ -240,6 +259,7 @@ export function mergeDocuments(
   const document: ParsedDocument = {
     html: mergedHtml,
     imageCount: countImages(mergedHtml),
+    images: [],
     tableCount: countTopLevelTables(mergedHtml),
     headingCounts: countHeadingLevels(mergedHtml),
     wordCount: countWords(mergedHtml),
@@ -254,27 +274,29 @@ export function mergeDocuments(
     headings,
     tocEntries,
     replacedStaleToc: staleToc !== undefined,
-    tableCaptions,
+    tableCaptions: tables.captions,
+    figureCaptions: figures.captions,
     warnings,
     passthrough: false,
     ...(sourceCover?.candidateName ? { candidateName: sourceCover.candidateName } : {}),
   };
 }
 
-const STALE_LIST_START = "<!--lauda:stale-table-list-start-->";
-const STALE_LIST_END = "<!--lauda:stale-table-list-end-->";
+const CAPTION_LIST_KINDS: readonly CaptionListKind[] = ["table", "figure"];
+
+function fenceMarkers(kind: CaptionListKind): [string, string] {
+  return [`<!--lauda:stale-${kind}-list-start-->`, `<!--lauda:stale-${kind}-list-end-->`];
+}
 
 /**
- * Brackets the master's own "Lista de tabelas" section (its heading and
+ * Brackets the master's own caption list section (its heading and
  * everything up to the next heading at the same or a shallower level) with
  * comment fences, so the merge can swap it for the generated list once it
- * knows whether there is anything to list.
+ * knows whether there is anything to list. Undefined when there's none.
  */
-function fenceTableListSection(
-  blocks: HtmlBlock[],
-): { blocks: HtmlBlock[]; fenced: HtmlBlock[] } | undefined {
+function fenceCaptionListSection(blocks: HtmlBlock[], kind: CaptionListKind): HtmlBlock[] | undefined {
   const start = blocks.findIndex(
-    (block) => headingLevelOf(block.tag) !== undefined && isTableListTitle(blockText(block.html)),
+    (block) => headingLevelOf(block.tag) !== undefined && isCaptionListTitle(blockText(block.html), kind),
   );
   if (start === -1) return undefined;
   const level = headingLevelOf(blocks[start].tag) as number;
@@ -284,16 +306,14 @@ function fenceTableListSection(
     if (next !== undefined && next <= level) break;
     end += 1;
   }
-  return {
-    blocks,
-    fenced: [
-      ...blocks.slice(0, start),
-      { tag: "#fence", html: STALE_LIST_START },
-      ...blocks.slice(start, end),
-      { tag: "#fence", html: STALE_LIST_END },
-      ...blocks.slice(end),
-    ],
-  };
+  const [startMarker, endMarker] = fenceMarkers(kind);
+  return [
+    ...blocks.slice(0, start),
+    { tag: "#fence", html: startMarker },
+    ...blocks.slice(start, end),
+    { tag: "#fence", html: endMarker },
+    ...blocks.slice(end),
+  ];
 }
 
 interface EmitContext {

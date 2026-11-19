@@ -43,6 +43,9 @@ import {
 import { fillTocPageNumbers } from "../merge/toc.ts";
 import type { MergedHeading } from "../merge/types.ts";
 import type { TableCaption } from "../formatting/tables.ts";
+import type { NumberedCaption } from "../formatting/captions.ts";
+import type { LowResolutionImage } from "../formatting/images.ts";
+import { imageLowResolutionWarning, withSourceFilename } from "../formatting/warnings.ts";
 import { pageLimitExceededWarning, summaryTooLongWarning } from "../formatting/warnings.ts";
 import { printMargins } from "../formatting/ruleSet.ts";
 import { serveEmbeddedFonts } from "./fonts.ts";
@@ -58,6 +61,10 @@ export interface PaginatedRenderOptions {
   headings: MergedHeading[];
   /** Numbered table captions, for the Lista de tabelas' page numbers (DIO-48). */
   tableCaptions?: readonly TableCaption[];
+  /** Numbered figure captions, for the Lista de figuras' page numbers (DIO-49). */
+  figureCaptions?: readonly NumberedCaption[];
+  /** Kept images below print resolution: warned about with the page they print on (DIO-49). */
+  lowResolutionImages?: readonly (LowResolutionImage & { sourceFilename: string })[];
 }
 
 /** What actually happened, for validations, tests and timing reports. Never contains document text. */
@@ -93,7 +100,8 @@ export async function renderPaginatedPdf(
 ): Promise<PaginatedRenderResult> {
   const startedAt = Date.now();
   const { headings } = options;
-  const tableCaptions = options.tableCaptions ?? [];
+  const captions = [...(options.tableCaptions ?? []), ...(options.figureCaptions ?? [])];
+  const lowResolutionImages = options.lowResolutionImages ?? [];
   const { ruleSet } = document;
 
   const baseHtml = injectTocStartMarker(injectBodyStartMarker(document.html, headings));
@@ -103,7 +111,8 @@ export async function renderPaginatedPdf(
     ...frontRectoMarkers,
     BODY_START_MARKER_ID,
     ...headings.map((h) => h.id),
-    ...tableCaptions.map((caption) => caption.id),
+    ...captions.map((caption) => caption.id),
+    ...lowResolutionImages.map((image) => image.anchorId),
   ];
   const probeHtml = buildPageMapProbeHtml(anchorIds);
 
@@ -144,7 +153,8 @@ export async function renderPaginatedPdf(
         totalPages: map.contentPageCount,
         existingBlanks: new Set(blankCounts.keys()),
         frontRectoMarkers,
-        pointAnchors: tableCaptions,
+        pointAnchors: captions,
+        trackedAnchors: lowResolutionImages.map((image) => image.anchorId),
       });
       passMs.push(Date.now() - passStart);
 
@@ -189,6 +199,13 @@ export async function renderPaginatedPdf(
   });
 
   const warnings: FormattingWarning[] = [];
+  for (const image of lowResolutionImages) {
+    const page = plan.pointPages.get(image.anchorId);
+    const label = page === undefined ? undefined : (pageLabels[page - 1] ?? undefined);
+    warnings.push(
+      withSourceFilename(imageLowResolutionWarning(image.ordinal, image.dpi, label ?? undefined), image.sourceFilename),
+    );
+  }
   if (ruleSet.constraints.maxPages !== undefined && totalPages > ruleSet.constraints.maxPages) {
     warnings.push(pageLimitExceededWarning(totalPages, ruleSet.constraints.maxPages));
   }

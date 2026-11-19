@@ -133,19 +133,31 @@ export function tocPagePlaceholder(headingId: string, numbering: PageNumbering):
   return `<span class="toc-page" data-toc-heading="${escapeHtml(headingId)}" data-toc-numbering="${numbering}"></span>`;
 }
 
-/* --------------------------- Lista de tabelas --------------------------- */
+/* -------------------- Lista de tabelas / Lista de figuras -------------------- */
+
+/** Which generated caption list: tables (DIO-48) or figures (DIO-49). */
+export type CaptionListKind = "table" | "figure";
 
 export const TABLE_LIST_TITLE_PT = "Lista de tabelas";
+export const FIGURE_LIST_TITLE_PT = "Lista de figuras";
 
-/** "Lista de tabelas", "Índice de quadros", "Lista das tabelas" — accent-insensitive. */
-const TABLE_LIST_TITLE_PATTERN = /^(lista|indice|index) (de|das|dos) (tabelas|quadros)$/;
+export const CAPTION_LIST_TITLES_PT: Readonly<Record<CaptionListKind, string>> = {
+  table: TABLE_LIST_TITLE_PT,
+  figure: FIGURE_LIST_TITLE_PT,
+};
 
-export function isTableListTitle(title: string): boolean {
-  return TABLE_LIST_TITLE_PATTERN.test(normalizeTitle(title).replace(/\s+/g, " "));
+/** The master's own list, accent-insensitive: "Lista de tabelas", "Índice de quadros", "Lista das figuras"… */
+const CAPTION_LIST_TITLE_PATTERNS: Readonly<Record<CaptionListKind, RegExp>> = {
+  table: /^(lista|indice|index) (de|das|dos) (tabelas|quadros)$/,
+  figure: /^(lista|indice|index) (de|das|dos) (figuras|imagens|ilustracoes|graficos)$/,
+};
+
+export function isCaptionListTitle(title: string, kind: CaptionListKind): boolean {
+  return CAPTION_LIST_TITLE_PATTERNS[kind].test(normalizeTitle(title).replace(/\s+/g, " "));
 }
 
-/** One entry of the generated Lista de tabelas (DIO-48): a numbered table caption. */
-export interface TableListEntry {
+/** One entry of a generated caption list: a numbered caption. */
+export interface CaptionListEntry {
   /** Anchor id of the caption paragraph. */
   captionId: string;
   text: string;
@@ -153,11 +165,15 @@ export interface TableListEntry {
 }
 
 /**
- * The Lista de tabelas, in the Índice's pass-1 form: page numbers are the
- * same placeholders, keyed by the caption's anchor id, so the same
+ * A caption list, in the Índice's pass-1 form: page numbers are the same
+ * placeholders, keyed by the caption's anchor id, so the same
  * `fillTocPageNumbers` resolves them from the same page map.
  */
-export function renderTableListHtml(entries: readonly TableListEntry[], options: { headingId?: string } = {}): string {
+export function renderCaptionListHtml(
+  kind: CaptionListKind,
+  entries: readonly CaptionListEntry[],
+  options: { headingId?: string } = {},
+): string {
   const items = entries
     .map(
       (entry) =>
@@ -171,7 +187,7 @@ export function renderTableListHtml(entries: readonly TableListEntry[], options:
   // The title is a front-matter part like the abbreviations list, so it gets
   // an Índice entry; with an id, the page map can find it.
   const idAttr = options.headingId ? ` id="${escapeHtml(options.headingId)}"` : "";
-  return `<nav class="generated-toc generated-table-list"><h1${idAttr} class="toc-title part-title front-matter-title">${escapeHtml(TABLE_LIST_TITLE_PT)}</h1><ol class="toc-list">\n${items}\n</ol></nav>`;
+  return `<nav class="generated-toc generated-caption-list generated-${kind}-list"><h1${idAttr} class="toc-title part-title front-matter-title">${escapeHtml(CAPTION_LIST_TITLES_PT[kind])}</h1><ol class="toc-list">\n${items}\n</ol></nav>`;
 }
 
 /**
@@ -190,8 +206,8 @@ export const GENERATED_TOC_CSS = `
 .generated-toc .toc-depth-4 { padding-left: 3em; }
 .generated-toc .toc-depth-5 { padding-left: 4.5em; }
 .generated-toc .toc-depth-6 { padding-left: 6em; }
-/* The Lista de tabelas (DIO-48) is its own front-matter page wherever it sits. */
-.generated-table-list { break-before: page; page-break-before: always; }
+/* Each generated caption list (DIO-48/49) is its own front-matter page wherever it sits. */
+.generated-caption-list { break-before: page; page-break-before: always; }
 
 /* Document structure (DIO-45). Part titles (chapter titles, front-matter
    titles) share one case wherever they appear, so chapter files typed in

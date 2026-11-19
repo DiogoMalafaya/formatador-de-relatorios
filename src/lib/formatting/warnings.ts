@@ -9,6 +9,7 @@
  */
 
 export type FormattingWarningCode =
+  /** Pre-DIO-49 "warn, don't strip" image warning; may still sit on stored sessions. */
   | "image-detected"
   | "unsupported-structure"
   | "table-present"
@@ -19,6 +20,12 @@ export type FormattingWarningCode =
   | "source-cover-replaced"
   /** Emitted by the merge engine (DIO-48) when the master's own Lista de tabelas is regenerated. */
   | "stale-table-list-replaced"
+  /** Same, for the Lista de figuras (DIO-49). */
+  | "stale-figure-list-replaced"
+  /** A forbidden image was left out of the output (DIO-49): one per image. */
+  | "image-omitted"
+  /** A kept image prints below 150 dpi at its placed size (DIO-49). */
+  | "image-low-resolution"
   /** Exact-count variants, emitted by the two-pass render (DIO-42) once a real page map exists. */
   | "page-limit-exceeded"
   /** The PDF compliance checker (DIO-47) found the output breaking a rule of the profile. */
@@ -49,13 +56,24 @@ export function withSourceFilename(warning: FormattingWarning, filename: string)
   };
 }
 
-export function imageDetectedWarning(count: number): FormattingWarning {
+/**
+ * One forbidden image left out of the output (DIO-49). One warning per image,
+ * so the student can find each one; the preview shows a placeholder where it
+ * was. Never quotes the image's alt text: warnings can reach logs.
+ */
+export function imageOmittedWarning(ordinal: number, colegioName: string): FormattingWarning {
   return {
-    code: "image-detected",
-    messagePt:
-      count === 1
-        ? "O documento contém 1 imagem. Fotografias e imagens não são permitidas nesta norma — remove-a antes de continuares."
-        : `O documento contém ${count} imagens. Fotografias e imagens não são permitidas nesta norma — remove-as antes de continuares.`,
+    code: "image-omitted",
+    messagePt: `Removemos a ${ordinal}.ª imagem deste documento: as normas do ${colegioName} não permitem fotografias nem gráficos. Na pré-visualização, um aviso marca o sítio onde estava.`,
+  };
+}
+
+/** A kept image prints soft at the size it's placed at (DIO-49). Page when the render knows it. */
+export function imageLowResolutionWarning(ordinal: number, dpi: number, pageLabel?: string): FormattingWarning {
+  const where = pageLabel ? ` (na página ${pageLabel})` : "";
+  return {
+    code: "image-low-resolution",
+    messagePt: `A ${ordinal}.ª imagem deste documento${where} tem pouca resolução para impressão: cerca de ${dpi} ppp no tamanho em que aparece, quando o recomendado são pelo menos 150. Se tiveres uma versão maior, usa-a.`,
   };
 }
 

@@ -11,7 +11,7 @@ import {
   buildMasterWithoutTocFixture,
 } from "./testFixtures.ts";
 import { parseDocxDocument } from "../formatting/parseDocx.ts";
-import { buildDocx, heading, paragraph, simpleTable } from "../formatting/testFixtures.ts";
+import { buildDocx, heading, imageParagraph, paragraph, simpleTable, syntheticPng } from "../formatting/testFixtures.ts";
 
 describe("mergeDocuments", () => {
   let master: MergeSource;
@@ -245,7 +245,7 @@ describe("mergeDocuments", () => {
       const result = mergeDocuments(master, captioned);
       const html = result.document.html;
       const tocEnd = html.indexOf("</nav>");
-      const list = html.indexOf('<nav class="generated-toc generated-table-list">');
+      const list = html.search(/<nav class="[^"]*\bgenerated-table-list\b/);
       assert.ok(list > tocEnd && list < tocEnd + 20, "Lista de tabelas follows the Índice");
       assert.match(html, /data-toc-heading="table-caption-1" data-toc-numbering="arabic"/);
       assert.match(html, /<span class="toc-entry-text">Tabela 2\. Atos por área<\/span>/);
@@ -284,6 +284,36 @@ describe("mergeDocuments", () => {
       assert.doesNotMatch(html, /generated-table-list/);
       assert.doesNotMatch(html, /lauda:stale-table-list/);
       assert.deepEqual(result.tableCaptions, []);
+    });
+  });
+
+  describe("Lista de figuras (DIO-49)", () => {
+    const sourceOf = async (id: string, children: Parameters<typeof buildDocx>[0]): Promise<MergeSource> => ({
+      id,
+      document: await parseDocxDocument(await buildDocx(children)),
+    });
+
+    test("figure captions are numbered across files and listed after the Lista de tabelas", async () => {
+      const result = mergeDocuments(master, [
+        await sourceOf("fig-a", [
+          heading(1, "Atividade"),
+          paragraph("Tabela 1 – Consultas"),
+          simpleTable([["Ano", "Consultas", "Notas"], ["2024", "111", "a"], ["2025", "222", "b"]]),
+          imageParagraph({ png: syntheticPng(40, 30, 1) }),
+          paragraph("Figura 7 – Evolução"),
+        ]),
+        await sourceOf("fig-b", [heading(1, "Mais"), paragraph("Gráfico 1: Distribuição"), imageParagraph({ png: syntheticPng(40, 30, 2) })]),
+      ]);
+      assert.deepEqual(
+        result.figureCaptions.map((caption) => caption.text),
+        ["Figura 1. Evolução", "Figura 2. Distribuição"],
+      );
+      const html = result.document.html;
+      const tables = html.search(/generated-table-list/);
+      const figures = html.search(/generated-figure-list/);
+      assert.ok(tables > 0 && figures > tables, "tables list, then figures list");
+      const titles = result.tocEntries.map((entry) => entry.text);
+      assert.ok(titles.indexOf("Lista de figuras") === titles.indexOf("Lista de tabelas") + 1);
     });
   });
 });
