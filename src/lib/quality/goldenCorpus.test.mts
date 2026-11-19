@@ -14,11 +14,7 @@ import type { ComplianceCheckId } from "../compliance/checkPdf.ts";
  * the list (a regression), and on a listed violation that no longer happens
  * (the fix landed, so the entry must go).
  */
-const KNOWN_VIOLATIONS: Readonly<Record<string, readonly { check: ComplianceCheckId; ticket: string }[]>> = {
-  // MFR forbids photographs and graphics; images are still kept (and warned
-  // about) until DIO-49 omits them per profile.
-  "medicina-fisica-e-de-reabilitacao": [{ check: "images-forbidden", ticket: "DIO-49" }],
-};
+const KNOWN_VIOLATIONS: Readonly<Record<string, readonly { check: ComplianceCheckId; ticket: string }[]>> = {};
 
 describe("golden corpus (DIO-47)", () => {
   for (const specialtyId of GOLDEN_SPECIALTY_IDS) {

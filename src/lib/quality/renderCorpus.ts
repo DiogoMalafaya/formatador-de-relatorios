@@ -29,6 +29,8 @@ export async function renderCorpusCase(corpusCase: CorpusCase, coverId = "classi
     candidateName: prepared.candidateName,
     headings: prepared.merge.headings,
     tableCaptions: prepared.merge.tableCaptions,
+    figureCaptions: prepared.merge.figureCaptions,
+    lowResolutionImages: prepared.merge.lowResolutionImages,
   });
   return { prepared, result };
 }

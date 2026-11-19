@@ -20,6 +20,7 @@ import {
   imageParagraph,
   paragraph,
   simpleTable,
+  syntheticPng,
 } from "../formatting/testFixtures.ts";
 import { resolveRuleSetId } from "../specialties/index.ts";
 import type { ParsedSource } from "../rendering/prepareDocument.ts";
@@ -127,6 +128,8 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
     heading(1, "Lista de Tabelas"),
     paragraph("Tabela 1 – Resumo curricular"),
     paragraph("Tabela 2 – Casuística"),
+    heading(1, "Lista de Figuras"),
+    paragraph("Figura 1 – Gráfico"),
   ]);
 
   // Long enough to run over a page, like the reference CVs' casuística, so
@@ -185,10 +188,13 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
       simpleTable(casuistica),
       paragraph("Legenda: Primeiras – primeiras consultas; Subsequentes – consultas de seguimento."),
       heading(2, "Registos"),
-      paragraph("Figura ilustrativa fictícia:"),
-      imageParagraph(),
+      paragraph("Distribuição fictícia das consultas por área:"),
+      // 640px across 12.7cm: ~128 dpi, so it draws a low-resolution warning.
+      imageParagraph({ png: syntheticPng(640, 400, 1), widthPx: 480, heightPx: 300 }),
+      paragraph("Figura 1 – Consultas por área (dados fictícios)"),
       paragraph("Logótipo fictício do serviço:"),
-      imageParagraph(),
+      // 300px across 3.2cm: sharp. Uncaptioned, so not numbered.
+      imageParagraph({ png: syntheticPng(300, 300, 2), widthPx: 120, heightPx: 120 }),
     ]),
     source("valorizacao", "05 Valorização profissional.docx", [
       heading(1, "Valorização profissional"),

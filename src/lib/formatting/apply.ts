@@ -16,6 +16,8 @@
 
 import { parseDocxDocument } from "./parseDocx.ts";
 import { TableDesigner } from "./tables.ts";
+import { FigureDesigner } from "./figures.ts";
+import { applyImagePolicy } from "./images.ts";
 import { splitTopLevelBlocks } from "../merge/blocks.ts";
 import type { ParsedDocument } from "./parseDocx.ts";
 import { extractCandidateName } from "./extractName.ts";
@@ -24,7 +26,8 @@ import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { buildRuleSetCss, resolveChoices } from "./styles.ts";
 import { estimatePageCount } from "./pageEstimate.ts";
 import {
-  imageDetectedWarning,
+  imageLowResolutionWarning,
+  imageOmittedWarning,
   pageLimitPossiblyExceededWarning,
   tablePresentWarning,
   unsupportedStructureWarning,
@@ -33,6 +36,8 @@ import type { FormattingWarning } from "./warnings.ts";
 
 export interface ApplyFormattingOptions {
   ruleSetId: string;
+  /** Preview only: mark where a forbidden image was removed (DIO-49). */
+  imagePlaceholders?: boolean;
   fontFamily?: FontFamily;
   titleSizePt?: TitleSizePt;
 }
@@ -58,8 +63,12 @@ export interface FormattedDocument {
 export function collectConstraintWarnings(parsed: ParsedDocument, ruleSet: RuleSet): FormattingWarning[] {
   const warnings: FormattingWarning[] = [];
 
-  if (ruleSet.constraints.imagesForbidden && parsed.imageCount > 0) {
-    warnings.push(imageDetectedWarning(parsed.imageCount));
+  // Forbidden images are removed by `applyImagePolicy` (DIO-49); one
+  // warning per image, so each can be found.
+  if (ruleSet.constraints.imagesForbidden) {
+    for (let ordinal = 1; ordinal <= parsed.imageCount; ordinal += 1) {
+      warnings.push(imageOmittedWarning(ordinal, ruleSet.name));
+    }
   }
 
   if (ruleSet.constraints.tablesRestrictedToActivitySchematization && parsed.tableCount > 0) {
@@ -126,10 +135,22 @@ export async function applyFormatting(
   options: ApplyFormattingOptions,
 ): Promise<FormattedDocument> {
   const parsed = await parseDocxDocument(buffer);
-  if (!/<table[\s>]/i.test(parsed.html)) return formatParsedDocument(parsed, options);
-  const designed = new TableDesigner()
-    .designBlocks(splitTopLevelBlocks(parsed.html), "arabic")
+  const ruleSet = getRuleSet(options.ruleSetId);
+  const policy = applyImagePolicy(parsed.html, parsed.images, {
+    ruleSet,
+    anchorPrefix: "doc",
+    placeholders: options.imagePlaceholders ?? false,
+  });
+  // No page map on this path, so low-resolution warnings can't name a page.
+  const extraWarnings = policy.lowResolution.map((image) => imageLowResolutionWarning(image.ordinal, image.dpi));
+
+  if (!/<table[\s>]|<img\b/i.test(policy.html)) {
+    return formatParsedDocument({ ...parsed, html: policy.html }, options, { extraWarnings });
+  }
+  const numbering = "arabic";
+  const designed = new FigureDesigner()
+    .designBlocks(new TableDesigner().designBlocks(splitTopLevelBlocks(policy.html), numbering), numbering)
     .map((block) => block.html)
     .join("\n");
-  return formatParsedDocument({ ...parsed, html: designed }, options);
+  return formatParsedDocument({ ...parsed, html: designed }, options, { extraWarnings });
 }

@@ -44,7 +44,7 @@ export interface RenderedPreview {
 export async function renderPreviewPdf(session: SessionRecord): Promise<RenderedPreview> {
   let prepared;
   try {
-    prepared = await prepareDocument(session);
+    prepared = await prepareDocument(session, { imagePlaceholders: true });
   } catch (error) {
     if (error instanceof DocumentNotReadyError) {
       throw new PreviewNotReadyError(error.message);
@@ -62,6 +62,8 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
       candidateName: prepared.candidateName,
       headings: prepared.merge.headings,
       tableCaptions: prepared.merge.tableCaptions,
+      figureCaptions: prepared.merge.figureCaptions,
+      lowResolutionImages: prepared.merge.lowResolutionImages,
     });
     pdf = rendered.pdf;
     renderWarnings = rendered.warnings;

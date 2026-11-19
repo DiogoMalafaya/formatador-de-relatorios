@@ -10,6 +10,8 @@
  */
 
 import mammoth from "mammoth";
+import { hashImage, imageAttributes, imagePixelSize, readImageExtents } from "./images.ts";
+import type { ParsedImage } from "./images.ts";
 
 const STYLE_MAP = [
   "p[style-name='Heading 1'] => h1:fresh",
@@ -27,6 +29,13 @@ export interface ParsedDocument {
   /** Semantic HTML — body content only, no <html>/<head>. */
   html: string;
   imageCount: number;
+  /**
+   * Facts about each image (pixel size, Word placement size), for the
+   * profile's keep/omit decision and the low-resolution check (DIO-49).
+   * Index i matches `data-lauda-img="i"` in `html`. Empty for a merged
+   * document: the policy runs per source, before the merge.
+   */
+  images: ParsedImage[];
   /** Top-level tables only; nested ones are counted separately and flagged. */
   tableCount: number;
   headingCounts: { h1: number; h2: number; h3: number };
@@ -38,15 +47,30 @@ export interface ParsedDocument {
 
 export async function parseDocxDocument(buffer: Buffer): Promise<ParsedDocument> {
   let imageCount = 0;
+  const images: ParsedImage[] = [];
+  const extents = await readImageExtents(buffer);
 
   const result = await mammoth.convertToHtml(
     { buffer },
     {
       styleMap: STYLE_MAP,
       convertImage: mammoth.images.imgElement(async (image) => {
+        // Claimed before the first await, so indexes follow document order.
+        const index = imageCount;
         imageCount += 1;
-        const base64 = await image.read("base64");
-        return { src: `data:${image.contentType};base64,${base64}` };
+        const bytes = await image.read();
+        const pixels = imagePixelSize(bytes);
+        const placed = extents.get(hashImage(bytes));
+        const parsedImage: ParsedImage = {
+          index,
+          ...(pixels ? { widthPx: pixels.width, heightPx: pixels.height } : {}),
+          ...(placed ? { placedWidthPt: placed.widthPt, placedHeightPt: placed.heightPt } : {}),
+        };
+        images[index] = parsedImage;
+        return {
+          src: `data:${image.contentType};base64,${bytes.toString("base64")}`,
+          ...imageAttributes(parsedImage),
+        };
       }),
     },
   );
@@ -68,6 +92,7 @@ export async function parseDocxDocument(buffer: Buffer): Promise<ParsedDocument>
   return {
     html,
     imageCount,
+    images,
     tableCount,
     headingCounts: countHeadings(html),
     wordCount: countWords(html),

@@ -23,11 +23,17 @@ export function staleTocReplacedWarning(): FormattingWarning {
   };
 }
 
-/** The master's own Lista de tabelas was replaced by one generated from the numbered captions (DIO-48). */
-export function staleTableListReplacedWarning(): FormattingWarning {
-  return {
-    code: "stale-table-list-replaced",
-    messagePt:
-      "A lista de tabelas do teu documento principal foi substituída por uma lista gerada a partir das legendas das tabelas, com os números de página do documento final.",
-  };
+/** The master's own Lista de tabelas/figuras was replaced by one generated from the numbered captions (DIO-48/49). */
+export function staleCaptionListReplacedWarning(kind: "table" | "figure"): FormattingWarning {
+  return kind === "table"
+    ? {
+        code: "stale-table-list-replaced",
+        messagePt:
+          "A lista de tabelas do teu documento principal foi substituída por uma lista gerada a partir das legendas das tabelas, com os números de página do documento final.",
+      }
+    : {
+        code: "stale-figure-list-replaced",
+        messagePt:
+          "A lista de figuras do teu documento principal foi substituída por uma lista gerada a partir das legendas das figuras, com os números de página do documento final.",
+      };
 }

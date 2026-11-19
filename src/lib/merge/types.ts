@@ -11,6 +11,7 @@
 import type { ParsedDocument } from "../formatting/parseDocx.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { TableCaption } from "../formatting/tables.ts";
+import type { NumberedCaption } from "../formatting/captions.ts";
 
 /** One source document in the merge: the master or one ordered chapter. */
 export interface MergeSource {
@@ -92,6 +93,8 @@ export interface MergeResult {
    * into the page map so the generated Lista de tabelas gets exact pages.
    */
   tableCaptions: TableCaption[];
+  /** Numbered figure captions in document order (DIO-49), for the Lista de figuras. */
+  figureCaptions: NumberedCaption[];
   /** Merge-specific warnings (stale-TOC replacement). Source-document warnings keep flowing via `document`'s counts. */
   warnings: FormattingWarning[];
   /** True when there was nothing to merge and the master passed through byte-identical. */

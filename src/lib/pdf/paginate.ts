@@ -41,6 +41,11 @@ export interface PaginationInput {
    * They never take a blank page; they only ride the shift.
    */
   pointAnchors?: readonly { id: string; numbering: PageNumbering }[];
+  /**
+   * Anchors whose final page is reported but not numbered for the Índice —
+   * today low-resolution images, so their warning can name the page (DIO-49).
+   */
+  trackedAnchors?: readonly string[];
 }
 
 export interface PaginationPlan {
@@ -61,6 +66,8 @@ export interface PaginationPlan {
   headingPages: Map<string, number>;
   /** Predicted final absolute page per recto marker (`frontRectoMarkers`), for locating their blanks. */
   markerPages: Map<string, number>;
+  /** Predicted final absolute page per point and tracked anchor. */
+  pointPages: Map<string, number>;
   /**
    * Sequence-local page numbers per heading id, for `fillTocPageNumbers`:
    * roman-sequence headings get their absolute page (the sequence starts at
@@ -143,10 +150,16 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     );
   }
 
+  const pointPages = new Map<string, number>();
+  for (const id of input.trackedAnchors ?? []) {
+    const rendered = pages.get(id);
+    if (rendered !== undefined) pointPages.set(id, finalPageOf(rendered));
+  }
   for (const anchor of input.pointAnchors ?? []) {
     const rendered = pages.get(anchor.id);
     if (rendered === undefined) continue;
     const finalPage = finalPageOf(rendered);
+    pointPages.set(anchor.id, finalPage);
     tocPageNumbers.set(
       anchor.id,
       anchor.numbering === "roman" || finalPage < bodyStartPage ? finalPage : finalPage - bodyStartPage + 1,
@@ -169,6 +182,7 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     totalPages: totalPages - existingBlankPages.length + blankAnchors.length,
     headingPages,
     markerPages,
+    pointPages,
     tocPageNumbers,
     stable,
   };

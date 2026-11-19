@@ -33,45 +33,22 @@ import { escapeHtml } from "../html.ts";
 import { blockText } from "../merge/blocks.ts";
 import type { HtmlBlock } from "../merge/blocks.ts";
 import type { PageNumbering } from "../merge/types.ts";
+import { isCaptionBlock, normalizeCaptionText, stripCaptionPrefix as stripPrefix } from "./captions.ts";
+import type { NumberedCaption } from "./captions.ts";
 
-export interface TableCaption {
-  /** Anchor id on the caption paragraph; the page map resolves it. */
-  id: string;
-  /** 1-based, document order. */
-  number: number;
-  /** Plain text as shown, e.g. "Tabela 2. Casuística". */
-  text: string;
-  /** The page-number sequence the caption's page belongs to. */
-  numbering: PageNumbering;
-}
+export type TableCaption = NumberedCaption;
 
 /** Tables with this many rows or fewer are never split across pages. */
 export const SHORT_TABLE_MAX_ROWS = 12;
 
 const DEFAULT_CAPTION_ID_PREFIX = "table-caption";
-const MAX_CAPTION_LENGTH = 240;
 
-/**
- * "Tabela 1 – …", "Tabela n.º 2: …", "Quadro 3. …", "Tabela 4" — the label,
- * an optional number and an optional separator. Matched on accent-stripped,
- * lowercased text.
- */
-const CAPTION_PREFIX_PATTERN = /^(tabela|quadro)(\s+(n\.?\s*[oº°]\.?\s*)?\d+([.-]\d+)*)?\s*([.:–—-]\s*)?/;
-/** A label alone isn't enough without a number or separator: "Tabela de preços" is prose. */
-const CAPTION_PATTERN = /^(tabela|quadro)(\s+(n\.?\s*[oº°]\.?\s*)?\d+([.-]\d+)*\s*([.:–—-]|$)|\s*[.:–—-])/;
 const NOTE_PATTERN = /^(legenda|nota|notas|fonte|fontes|abreviaturas)\s*[:.–—-]/;
 const NUMERIC_PATTERN = /^[-+−]?\d[\d\s.,]*\s*%?$/;
 const EMPTY_CELL_PATTERN = /^[-–—]?$/;
 const TOTAL_PATTERN = /^(total|totais|subtotal)\b/;
 
-function normalize(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
+const normalize = normalizeCaptionText;
 
 /**
  * Stateful across calls so caption numbers and ids run through a whole
@@ -96,16 +73,16 @@ export class TableDesigner {
 
       if (block.tag !== "table") {
         // A caption immediately above a table is emitted with that table.
-        if (isCaptionBlock(block) && blocks[i + 1]?.tag === "table") continue;
+        if (isTableCaption(block) && blocks[i + 1]?.tag === "table") continue;
         out.push(block);
         continue;
       }
 
-      const above = i > 0 && isCaptionBlock(blocks[i - 1]) && !consumed.has(i - 1) ? blocks[i - 1] : undefined;
+      const above = i > 0 && isTableCaption(blocks[i - 1]) && !consumed.has(i - 1) ? blocks[i - 1] : undefined;
       // A caption below counts only when it isn't the caption *above* the next table.
       const belowIndex = i + 1;
       const below =
-        !above && isCaptionBlock(blocks[belowIndex]) && blocks[belowIndex + 1]?.tag !== "table"
+        !above && isTableCaption(blocks[belowIndex]) && blocks[belowIndex + 1]?.tag !== "table"
           ? blocks[belowIndex]
           : undefined;
       if (below) consumed.add(belowIndex);
@@ -128,7 +105,7 @@ export class TableDesigner {
     const number = this.captions.length + 1;
     const id = `${this.idPrefix}-${number}`;
     const raw = blockText(block.html);
-    const rest = stripCaptionPrefix(raw);
+    const rest = stripPrefix(raw, "table");
     const label = `Tabela ${number}.`;
     const text = rest.length > 0 ? `${label} ${rest}` : label;
     this.captions.push({ id, number, text, numbering });
@@ -137,24 +114,11 @@ export class TableDesigner {
   }
 }
 
-function isCaptionBlock(block: HtmlBlock | undefined): boolean {
-  if (!block || block.tag !== "p") return false;
-  const text = blockText(block.html);
-  if (text.length === 0 || text.length > MAX_CAPTION_LENGTH) return false;
-  if (/^<p[^>]*class="[^"]*\bcaption\b/.test(block.html)) return true;
-  return CAPTION_PATTERN.test(normalize(text));
-}
+const isTableCaption = (block: HtmlBlock | undefined) => isCaptionBlock(block, "table");
 
-/** Drops the student's own "Tabela 3 –" so ours is the only number. Works on the original text, not the normalised one. */
+/** Drops the student's own "Tabela 3 –" so ours is the only number. */
 export function stripCaptionPrefix(text: string): string {
-  const original = text.replace(/\s+/g, " ").trim();
-  // Fold accents and case one character at a time, so an index into the
-  // folded string is an index into the original.
-  const folded = [...original].map((char) => char.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()).join("");
-  if (folded.length !== original.length) return original;
-  const match = CAPTION_PREFIX_PATTERN.exec(folded);
-  if (!match || match[0].length === 0) return original;
-  return original.slice(match[0].length).trim();
+  return stripPrefix(text, "table");
 }
 
 function addClass(html: string, className: string): string {
