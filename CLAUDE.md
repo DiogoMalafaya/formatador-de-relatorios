@@ -394,6 +394,13 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
   the candidate's last-page signature — wet-signature lines only (PRD Q10).
   Abbreviation lists become a glossary only when every line parses
   (`merge/glossary.ts`); a dedication/epigraph opens alone on a recto.
+- **Body typography** (DIO-52, `src/lib/formatting/typography.ts`): classless
+  `<p>`/`<li>` are justified with a 0.5em paragraph gap and no gap between list
+  items. Hyphenation is **soft hyphens from TeX's pt patterns** (`hyphen`
+  package), not CSS `hyphens: auto`, because Chromium's auto-hyphenation is
+  platform-dependent (Mac yes, serverless Linux no). Capitalised words, tables,
+  headings and anything with a class are never hyphenated. "Label: value" lines
+  get a bold label only in runs of ≥ 2. Size and line spacing are untouched.
 - **The merge path has only ever run against synthesised fixtures.** DIO-20
   should exercise it with a real multi-file corpus before launch.
 - The PRD for the DIO-37…42 initiative is at
