@@ -12,11 +12,26 @@ describe("COVER_TEMPLATES", () => {
     assert.equal(new Set(ids).size, ids.length);
   });
 
-  test("every template renders both the candidate name and the date into its HTML", () => {
+  test("every template places all four of MFR's cover fields plus the internato (DIO-50)", () => {
     for (const template of COVER_TEMPLATES) {
-      const html = template.buildHtml({ candidateName: "NOME_TESTE", dateLabel: "DATA_TESTE" });
+      const html = template.buildHtml({
+        candidateName: "NOME_TESTE",
+        dateLabel: "DATA_TESTE",
+        internatoPt: "INTERNATO_TESTE",
+        localPt: "LOCAL_TESTE",
+      });
       assert.match(html, /NOME_TESTE/, `${template.id} must place the candidate name`);
+      assert.match(html, /Curriculum Vitae/, `${template.id} must say Curriculum Vitae`);
+      assert.match(html, /LOCAL_TESTE/, `${template.id} must place the local de formação`);
+      assert.match(html, /INTERNATO_TESTE/, `${template.id} must place the internato`);
       assert.match(html, /DATA_TESTE/, `${template.id} must place the date`);
+    }
+  });
+
+  test("a line not known yet leaves no empty paragraph", () => {
+    for (const template of COVER_TEMPLATES) {
+      const html = template.buildHtml({ candidateName: "N", dateLabel: "D", internatoPt: "", localPt: "" });
+      assert.doesNotMatch(html, /<p class="cover-line"><\/p>/, template.id);
     }
   });
 

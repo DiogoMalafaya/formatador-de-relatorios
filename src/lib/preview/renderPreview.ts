@@ -64,6 +64,7 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
       tableCaptions: prepared.merge.tableCaptions,
       figureCaptions: prepared.merge.figureCaptions,
       lowResolutionImages: prepared.merge.lowResolutionImages,
+      rectoHeadingIds: prepared.merge.rectoHeadingIds,
     });
     pdf = rendered.pdf;
     renderWarnings = rendered.warnings;
@@ -80,6 +81,7 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
     ruleSet: prepared.document.ruleSet,
     fontFamily: prepared.document.fontFamily,
     candidateName: prepared.candidateName,
+    ...(prepared.localDeFormacao ? { localDeFormacao: prepared.localDeFormacao } : {}),
     skip: ["images-forbidden", "page-cap"],
   });
   if (compliance.length > 0) {

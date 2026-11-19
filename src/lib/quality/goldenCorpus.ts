@@ -24,6 +24,8 @@ import {
 } from "../formatting/testFixtures.ts";
 import { resolveRuleSetId } from "../specialties/index.ts";
 import type { ParsedSource } from "../rendering/prepareDocument.ts";
+import type { CoverDetails } from "../covers/details.ts";
+import { getSpecialtyById } from "../specialties/index.ts";
 
 export interface CorpusCase {
   specialtyId: string;
@@ -34,6 +36,9 @@ export interface CorpusCase {
   masterPosition: 0;
   /** Fixed, so renders are reproducible. */
   dateLabel: string;
+  /** What the student would type in the cover step (DIO-50). Invented. */
+  coverDetails: CoverDetails;
+  specialtyNamePt: string;
 }
 
 interface Flavour {
@@ -228,5 +233,12 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
     sources: [master, ...chapters],
     masterPosition: 0,
     dateLabel: "12 de março de 2026",
+    coverDetails: {
+      hospital: "Hospital Universitário Imaginário",
+      city: "Vila Inventada",
+      orientador: "Dra. Orientadora Fictícia",
+      diretor: "Dr. Diretor Inventado",
+    },
+    specialtyNamePt: getSpecialtyById(specialtyId)?.name ?? specialtyId,
   };
 }

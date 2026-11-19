@@ -195,6 +195,7 @@ export default async function Home({ searchParams }: HomeProps) {
             specialtyId={specialtyId}
             unsupportedSpecialtyNamePt={unsupportedSpecialtyNamePt}
             coverId={session?.coverId}
+            coverDetails={session?.coverDetails}
             paid={paid}
             priceLabelPt={priceLabelPt}
           />

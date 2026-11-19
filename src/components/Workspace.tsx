@@ -1,5 +1,7 @@
 "use client";
 
+import { formatLocalDeFormacao } from "@/lib/covers/details";
+import type { CoverDetails } from "@/lib/covers/details";
 import { useState } from "react";
 import { getSpecialtyById } from "@/lib/specialties";
 import CheckoutButton from "./CheckoutButton";
@@ -35,6 +37,8 @@ interface WorkspaceProps {
   uploadFilename?: string;
   specialtyId: string;
   coverId: string;
+  /** Local de formação and signatories (DIO-50); edited in the wizard's cover step. */
+  coverDetails?: CoverDetails;
   /** Payment state as the server rendered it; DownloadPanel re-verifies by polling. */
   paid: boolean;
   /** Formatted server-side from the pricing lib; see CheckoutButton. */
@@ -43,17 +47,20 @@ interface WorkspaceProps {
   onCoverSaved: (coverId: string) => void;
   onEditUpload: () => void;
   onEditSpecialty: () => void;
+  onEditCoverDetails: () => void;
 }
 
 export default function Workspace({
   uploadFilename,
   specialtyId,
   coverId,
+  coverDetails,
   paid,
   priceLabelPt,
   onCoverSaved,
   onEditUpload,
   onEditSpecialty,
+  onEditCoverDetails,
 }: WorkspaceProps) {
   // Mobile-only accordion state; on desktop the CSS shows the rail regardless.
   const [railOpen, setRailOpen] = useState(false);
@@ -73,7 +80,7 @@ export default function Workspace({
               </p>
             </div>
             <div className={styles.previewSlot}>
-              <PreviewPane key={coverId} />
+              <PreviewPane key={`${coverId}|${JSON.stringify(coverDetails ?? {})}`} />
             </div>
           </div>
         </div>
@@ -113,6 +120,18 @@ export default function Workspace({
                   </button>
                 </div>
                 <p className={styles.railValue}>{specialtyName}</p>
+              </section>
+
+              <section className={styles.railSection}>
+                <div className={styles.railSectionHead}>
+                  <h3 className={styles.railLabel}>Local de formação</h3>
+                  <button type="button" className={styles.editButton} onClick={onEditCoverDetails}>
+                    Alterar
+                  </button>
+                </div>
+                <p className={styles.railValue}>
+                  {coverDetails ? formatLocalDeFormacao(coverDetails) : "Por indicar"}
+                </p>
               </section>
 
               <section className={styles.railSection}>

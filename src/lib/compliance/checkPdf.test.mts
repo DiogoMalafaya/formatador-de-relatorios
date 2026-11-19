@@ -1,7 +1,7 @@
 import { test, describe, before } from "node:test";
 import assert from "node:assert/strict";
 import { checkPdfCompliance } from "./checkPdf.ts";
-import type { ComplianceCheckId } from "./checkPdf.ts";
+import { mergeCoverWithDocument } from "../covers/merge.ts";
 import { renderPdf } from "../pdf/render.ts";
 import { applyFormatting } from "../formatting/apply.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
@@ -23,12 +23,23 @@ async function mfrDocument(children = [heading(1, "Formação"), paragraph("Text
   return applyFormatting(await buildDocx(children), { ruleSetId: "mfr" });
 }
 
+/** The front matter MFR requires (DIO-50): cover with its four fields, signed rosto, signed last page. */
+const LOCAL = "Hospital Imaginário, Vila Inventada";
+const withFrontMatter = (document: FormattedDocument): FormattedDocument =>
+  mergeCoverWithDocument(document, {
+    candidateName: NAME,
+    dateLabel: "12 de março de 2026",
+    specialtyNamePt: "Medicina Física e de Reabilitação",
+    details: { hospital: "Hospital Imaginário", city: "Vila Inventada" },
+  });
+
 async function violations(document: FormattedDocument, candidateName = NAME) {
   const pdf = await renderPdf(document, { candidateName: NAME });
   const found = await checkPdfCompliance(pdf, {
     ruleSet: document.ruleSet,
     fontFamily: document.fontFamily,
     candidateName,
+    localDeFormacao: LOCAL,
   });
   return found.map((violation) => violation.check).sort();
 }
@@ -41,15 +52,25 @@ const withCss = (document: FormattedDocument, css: string): FormattedDocument =>
 describe("checkPdfCompliance (DIO-47)", () => {
   let clean: FormattedDocument;
   before(async () => {
-    clean = await mfrDocument();
+    clean = withFrontMatter(await mfrDocument());
   });
 
-  const expectOnly = (found: ComplianceCheckId[], check: ComplianceCheckId) => assert.deepEqual(found, [check]);
 
-  test("a clean MFR document passes every check", async () => {
-    // Page 1 of this document is not a cover, so the cover check is the one
-    // expected finding; everything else must pass.
-    expectOnly(await violations(clean), "cover-fields");
+  test("a clean MFR document, front matter included, passes every check", async () => {
+    assert.deepEqual(await violations(clean), []);
+  });
+
+  test("catches a cover without the local de formação (DIO-50)", async () => {
+    const withoutLocal = mergeCoverWithDocument(await mfrDocument(), { candidateName: NAME, dateLabel: "12 de março de 2026" });
+    const found = await violations(withoutLocal);
+    assert.ok(found.includes("cover-fields"), found.join());
+  });
+
+  test("catches MFR front matter without its signature blocks (DIO-50)", async () => {
+    assert.deepEqual(
+      await violations({ ...(await mfrDocument()), html: `<p>${NAME}</p><p>Curriculum Vitae</p><p>${LOCAL}</p><p>2026</p>` }),
+      ["candidate-signature", "rosto-signatures"],
+    );
   });
 
   test("catches text that isn't black", async () => {
@@ -76,7 +97,7 @@ describe("checkPdfCompliance (DIO-47)", () => {
       ruleSet: getRuleSet("mfr"),
       fontFamily: "Times New Roman",
       candidateName: NAME,
-      skip: ["cover-fields"],
+      skip: ["cover-fields", "rosto-signatures", "candidate-signature"],
     });
     assert.deepEqual(found.map((violation) => violation.check), ["margins"]);
   });

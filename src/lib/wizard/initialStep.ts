@@ -1,6 +1,7 @@
 import { getOrderedSources } from "../session/sources.ts";
 import type { SessionRecord } from "../session/types.ts";
 import { needsSpecialtyReselection } from "../specialties/index.ts";
+import { isCoverDetailsComplete } from "../covers/details.ts";
 
 /**
  * Guided-setup wizard steps (DIO-37/DIO-38): 1 = upload, 2 = specialty,
@@ -20,6 +21,9 @@ export function maxReachableStep(session: SessionRecord | null): WizardStep {
   // An unsupported specialty counts as not chosen (DIO-44), unless paid.
   if (!session.specialtyId || needsSpecialtyReselection(session)) return 2;
   if (!session.coverId) return 3;
+  // The cover needs its local de formação (DIO-50). A session paid before
+  // that field existed still reaches its download.
+  if (!isCoverDetailsComplete(session.coverDetails) && session.payment.status !== "paid") return 3;
   return 4;
 }
 

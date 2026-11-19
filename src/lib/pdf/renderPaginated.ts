@@ -41,6 +41,7 @@ import {
   buildPageMapProbeHtml,
 } from "./template.ts";
 import { fillTocPageNumbers } from "../merge/toc.ts";
+import { buildRostoStartMarker, ROSTO_START_MARKER_ID } from "../covers/merge.ts";
 import type { MergedHeading } from "../merge/types.ts";
 import type { TableCaption } from "../formatting/tables.ts";
 import type { NumberedCaption } from "../formatting/captions.ts";
@@ -63,6 +64,8 @@ export interface PaginatedRenderOptions {
   tableCaptions?: readonly TableCaption[];
   /** Numbered figure captions, for the Lista de figuras' page numbers (DIO-49). */
   figureCaptions?: readonly NumberedCaption[];
+  /** Front-matter headings that open on a recto, alone on their page: dedication, epigraph (DIO-50). */
+  rectoHeadingIds?: readonly string[];
   /** Kept images below print resolution: warned about with the page they print on (DIO-49). */
   lowResolutionImages?: readonly (LowResolutionImage & { sourceFilename: string })[];
 }
@@ -105,14 +108,23 @@ export async function renderPaginatedPdf(
   const { ruleSet } = document;
 
   const baseHtml = injectTocStartMarker(injectBodyStartMarker(document.html, headings));
-  const frontRectoMarkers = baseHtml.includes(buildTocStartMarker()) ? [TOC_START_MARKER_ID] : [];
+  // Front-matter pages that open on a recto: the página de rosto (DIO-50),
+  // then the Índice (DIO-45).
+  const frontRectoMarkers = [
+    ...(baseHtml.includes(buildRostoStartMarker()) ? [ROSTO_START_MARKER_ID] : []),
+    ...(options.rectoHeadingIds ?? []),
+    ...(baseHtml.includes(buildTocStartMarker()) ? [TOC_START_MARKER_ID] : []),
+  ];
   const css = [document.css, PAGINATION_CSS, PAGE_MAP_PROBE_CSS, buildPartBreakCss(headings)].join("\n");
+  // A recto heading (dedication) is both a marker and a heading: probe it once.
   const anchorIds = [
-    ...frontRectoMarkers,
-    BODY_START_MARKER_ID,
-    ...headings.map((h) => h.id),
-    ...captions.map((caption) => caption.id),
-    ...lowResolutionImages.map((image) => image.anchorId),
+    ...new Set([
+      ...frontRectoMarkers,
+      BODY_START_MARKER_ID,
+      ...headings.map((h) => h.id),
+      ...captions.map((caption) => caption.id),
+      ...lowResolutionImages.map((image) => image.anchorId),
+    ]),
   ];
   const probeHtml = buildPageMapProbeHtml(anchorIds);
 
@@ -279,6 +291,7 @@ export function injectTocStartMarker(html: string): string {
 const MARKER_HTML: Readonly<Record<string, string>> = {
   [BODY_START_MARKER_ID]: buildBodyStartMarker(),
   [TOC_START_MARKER_ID]: buildTocStartMarker(),
+  [ROSTO_START_MARKER_ID]: buildRostoStartMarker(),
 };
 
 /** Every level-1 body heading (major part) starts on a fresh page, like the reference volume. */

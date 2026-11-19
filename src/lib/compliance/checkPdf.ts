@@ -26,7 +26,11 @@ export type ComplianceCheckId =
   | "footer-content"
   | "page-cap"
   | "cover-fields"
-  | "images-forbidden";
+  | "images-forbidden"
+  /** DIO-50: the página de rosto carries the orientador's and diretor's signature blocks. */
+  | "rosto-signatures"
+  /** DIO-50: the last page carries the candidate's signature block. */
+  | "candidate-signature";
 
 export interface ComplianceViolation {
   check: ComplianceCheckId;
@@ -40,6 +44,11 @@ export interface ComplianceOptions {
   /** The norm font the document was rendered in. */
   fontFamily: FontFamily;
   candidateName: string;
+  /**
+   * The local de formação the student gave (DIO-50), "Hospital …, Cidade".
+   * When set, the cover must show it; MFR names it as a required cover field.
+   */
+  localDeFormacao?: string;
   /** Checks to leave out, e.g. images on a watermarked preview, whose watermark is an image. */
   skip?: readonly ComplianceCheckId[];
 }
@@ -96,6 +105,8 @@ export async function checkPdfCompliance(pdf: Uint8Array, options: ComplianceOpt
     verbosity: 0,
   });
   const doc = await loadingTask.promise;
+  /** Normalised text of every page, for the checks that look across pages. */
+  const pageTexts: string[] = [];
 
   try {
     if (checks("page-cap", "pageLimit") && ruleSet.constraints.maxPages !== undefined && doc.numPages > ruleSet.constraints.maxPages) {
@@ -181,6 +192,8 @@ export async function checkPdfCompliance(pdf: Uint8Array, options: ComplianceOpt
         }
       }
 
+      pageTexts.push(normalizeForMatch(items.map((item) => item.str).join(" ")));
+
       if (pageNumber === 1 && checks("cover-fields", "cover")) {
         // Whitespace removed: letter-spaced cover type extracts as "C U R R I …".
         const cover = normalizeForMatch(items.map((item) => item.str).join(" ")).replace(/\s+/g, "");
@@ -188,6 +201,9 @@ export async function checkPdfCompliance(pdf: Uint8Array, options: ComplianceOpt
           cover.includes(normalizeForMatch(options.candidateName).replace(/\s+/g, "")) ? null : "o nome",
           /curriculumvit/.test(cover) ? null : "«Curriculum Vitae»",
           /(19|20)\d{2}/.test(cover) ? null : "a data",
+          !options.localDeFormacao || cover.includes(normalizeForMatch(options.localDeFormacao).replace(/\s+/g, ""))
+            ? null
+            : "o local de formação",
         ].filter((field): field is string => field !== null);
         if (missing.length > 0) {
           violations.push({ check: "cover-fields", page: 1, messagePt: `A capa não inclui ${missing.join(", ")}.` });
@@ -198,6 +214,28 @@ export async function checkPdfCompliance(pdf: Uint8Array, options: ComplianceOpt
     }
   } finally {
     await loadingTask.destroy();
+  }
+
+  // --- generated front/back matter the profile requires (DIO-50) ------------
+  if (ruleSet.frontMatter.rostoSignaturesRequired && checks("rosto-signatures")) {
+    const rosto = pageTexts.find((text) => text.includes("exame final de habilitacao"));
+    const signed = rosto && /orientador\(a\) de formacao/.test(rosto) && /diretor\(a\) do servico/.test(rosto);
+    if (!signed) {
+      violations.push({
+        check: "rosto-signatures",
+        messagePt: "A página de rosto não tem os espaços para as assinaturas do orientador de formação e do diretor do serviço.",
+      });
+    }
+  }
+  if (ruleSet.frontMatter.candidateSignatureRequired && checks("candidate-signature")) {
+    const last = pageTexts.at(-1) ?? "";
+    if (!/candidato\(a\)/.test(last)) {
+      violations.push({
+        check: "candidate-signature",
+        page: pageTexts.length,
+        messagePt: "A última página não tem o espaço para a assinatura do candidato.",
+      });
+    }
   }
 
   return violations;

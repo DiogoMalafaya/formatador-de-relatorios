@@ -287,6 +287,13 @@ describe("mergeDocuments", () => {
     });
   });
 
+  test("a dedication is reported as a recto front-matter page (DIO-50)", () => {
+    const result = mergeDocuments(master, chapters);
+    const dedication = result.headings.find((heading) => heading.text === "Dedicatória");
+    assert.ok(dedication);
+    assert.deepEqual(result.rectoHeadingIds, [dedication.id]);
+  });
+
   describe("Lista de figuras (DIO-49)", () => {
     const sourceOf = async (id: string, children: Parameters<typeof buildDocx>[0]): Promise<MergeSource> => ({
       id,

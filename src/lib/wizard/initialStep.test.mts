@@ -36,8 +36,27 @@ const sources = [
   },
 ];
 const multi = { sources, masterIndex: 0 };
+// The local de formação the cover step asks for (DIO-50). Invented.
+const coverDetails = { hospital: "Hospital Imaginário", city: "Vila Inventada" };
 
 describe("maxReachableStep", () => {
+  test("stops at the cover step until the local de formação is given (DIO-50)", () => {
+    assert.equal(maxReachableStep(record({ upload, specialtyId: "pediatria", coverId: "classica" })), 3);
+    assert.equal(
+      maxReachableStep(record({ upload, specialtyId: "pediatria", coverId: "classica", coverDetails: { hospital: " ", city: "X" } })),
+      3,
+    );
+  });
+
+  test("a session paid before cover details existed still reaches its download", () => {
+    assert.equal(
+      maxReachableStep(
+        record({ upload, specialtyId: "pediatria", coverId: "classica", payment: { status: "paid", paidAt: 1 } }),
+      ),
+      4,
+    );
+  });
+
   test("no session means step 1", () => {
     assert.equal(maxReachableStep(null), 1);
   });
@@ -47,7 +66,7 @@ describe("maxReachableStep", () => {
     assert.equal(maxReachableStep(record({ upload })), 2);
     assert.equal(maxReachableStep(record({ upload, specialtyId: "pediatria" })), 3);
     assert.equal(
-      maxReachableStep(record({ upload, specialtyId: "pediatria", coverId: "classica" })),
+      maxReachableStep(record({ upload, specialtyId: "pediatria", coverId: "classica", coverDetails })),
       4,
     );
   });
@@ -56,21 +75,21 @@ describe("maxReachableStep", () => {
     assert.equal(maxReachableStep(record(multi)), 2);
     assert.equal(maxReachableStep(record({ ...multi, specialtyId: "pediatria" })), 3);
     assert.equal(
-      maxReachableStep(record({ ...multi, specialtyId: "pediatria", coverId: "classica" })),
+      maxReachableStep(record({ ...multi, specialtyId: "pediatria", coverId: "classica", coverDetails })),
       4,
     );
   });
 
   test("an empty sources[] is not an upload", () => {
     assert.equal(
-      maxReachableStep(record({ sources: [], specialtyId: "pediatria", coverId: "classica" })),
+      maxReachableStep(record({ sources: [], specialtyId: "pediatria", coverId: "classica", coverDetails })),
       1,
     );
   });
 });
 
 describe("resolveInitialSetupStep", () => {
-  const complete = { upload, specialtyId: "pediatria", coverId: "classica" };
+  const complete = { upload, specialtyId: "pediatria", coverId: "classica", coverDetails };
 
   test("uses the persisted step while it is still reachable", () => {
     assert.equal(resolveInitialSetupStep(record({ ...complete, setupStep: 2 })), 2);
@@ -106,7 +125,7 @@ describe("resolveInitialSetupStep", () => {
 });
 
 describe("unsupported specialty (DIO-44)", () => {
-  const unsupported = { upload, specialtyId: "cardiologia", coverId: "classica" };
+  const unsupported = { upload, specialtyId: "cardiologia", coverId: "classica", coverDetails };
 
   test("an unpaid session with an unsupported specialty goes back to the specialty step", () => {
     assert.equal(maxReachableStep(record(unsupported)), 2);
@@ -120,7 +139,7 @@ describe("unsupported specialty (DIO-44)", () => {
 });
 
 describe("resolveInitialSetupStep with multi-file sources", () => {
-  const complete = { ...multi, specialtyId: "pediatria", coverId: "classica" };
+  const complete = { ...multi, specialtyId: "pediatria", coverId: "classica", coverDetails };
 
   test("a complete record reopens on the workspace after a refresh", () => {
     assert.equal(resolveInitialSetupStep(record({ ...complete, setupStep: 4 })), 4);

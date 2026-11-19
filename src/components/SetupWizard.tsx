@@ -3,6 +3,9 @@
 import { useState } from "react";
 import type { WizardStep } from "@/lib/wizard/initialStep";
 import CoverSelect from "./CoverSelect";
+import CoverDetailsForm from "./CoverDetailsForm";
+import { isCoverDetailsComplete } from "@/lib/covers/details";
+import type { CoverDetails } from "@/lib/covers/details";
 import Icon from "./Icon";
 import SpecialtySelect from "./SpecialtySelect";
 import UploadZone from "./UploadZone";
@@ -39,6 +42,8 @@ interface SetupWizardProps {
   /** Set when the stored specialty isn't supported (DIO-44) and must be chosen again. */
   unsupportedSpecialtyNamePt?: string;
   coverId?: string;
+  /** Local de formação and signatories for the cover and rosto (DIO-50). */
+  coverDetails?: CoverDetails;
   /**
    * Payment state as the server rendered it (webhook-fed record, or the
    * Stripe success redirect). Only chooses which primary action the
@@ -73,6 +78,7 @@ export default function SetupWizard({
   specialtyId: initialSpecialtyId,
   unsupportedSpecialtyNamePt,
   coverId: initialCoverId,
+  coverDetails: initialCoverDetails,
   paid,
   priceLabelPt,
 }: SetupWizardProps) {
@@ -81,14 +87,17 @@ export default function SetupWizard({
   const [filename, setFilename] = useState(uploadFilename);
   const [specialtyId, setSpecialtyId] = useState(initialSpecialtyId ?? "");
   const [coverId, setCoverId] = useState(initialCoverId ?? "");
+  const [coverDetails, setCoverDetails] = useState<CoverDetails | undefined>(initialCoverDetails);
+  // Mirrors `maxReachableStep`: a paid session never gets sent back for these.
+  const coverComplete = coverId !== "" && (paid || isCoverDetailsComplete(coverDetails));
 
   // Furthest step the student may jump to: every earlier decision must exist.
-  const maxReachable: WizardStep = !uploaded ? 1 : !specialtyId ? 2 : !coverId ? 3 : 4;
+  const maxReachable: WizardStep = !uploaded ? 1 : !specialtyId ? 2 : !coverComplete ? 3 : 4;
 
   const stepComplete: Record<WizardStep, boolean> = {
     1: uploaded,
     2: specialtyId !== "",
-    3: coverId !== "",
+    3: coverComplete,
     4: false,
   };
 
@@ -101,7 +110,9 @@ export default function SetupWizard({
   const validationHintPt: Record<WizardStep, string> = {
     1: "Carrega o teu currículo para continuar.",
     2: "Escolhe a tua especialidade para continuar.",
-    3: "Escolhe uma capa para veres a pré-visualização.",
+    3: coverId === ""
+      ? "Escolhe uma capa para veres a pré-visualização."
+      : "Indica e guarda o hospital e a cidade do teu internato.",
     4: "",
   };
 
@@ -137,11 +148,13 @@ export default function SetupWizard({
           uploadFilename={filename}
           specialtyId={specialtyId}
           coverId={coverId}
+          coverDetails={coverDetails}
           paid={paid}
           priceLabelPt={priceLabelPt}
           onCoverSaved={setCoverId}
           onEditUpload={() => goTo(1)}
           onEditSpecialty={() => goTo(2)}
+          onEditCoverDetails={() => goTo(3)}
         />
       ) : (
         <div className={styles.panel}>
@@ -179,6 +192,7 @@ export default function SetupWizard({
             <div className={styles.stepBody}>
               <h2 className={styles.stepTitle}>Escolhe a capa</h2>
               <CoverSelect initialCoverId={coverId || undefined} onSaved={setCoverId} />
+              <CoverDetailsForm initialDetails={coverDetails} onSaved={setCoverDetails} />
             </div>
           )}
 

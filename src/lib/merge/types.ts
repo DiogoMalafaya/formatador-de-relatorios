@@ -95,6 +95,8 @@ export interface MergeResult {
   tableCaptions: TableCaption[];
   /** Numbered figure captions in document order (DIO-49), for the Lista de figuras. */
   figureCaptions: NumberedCaption[];
+  /** Front-matter part headings that open on a recto: dedication, epigraph (DIO-50). */
+  rectoHeadingIds: string[];
   /** Merge-specific warnings (stale-TOC replacement). Source-document warnings keep flowing via `document`'s counts. */
   warnings: FormattingWarning[];
   /** True when there was nothing to merge and the master passed through byte-identical. */

@@ -30,7 +30,9 @@ describe("golden corpus (DIO-47)", () => {
         ruleSet: prepared.document.ruleSet,
         fontFamily: prepared.document.fontFamily,
         candidateName: prepared.candidateName,
+        ...(prepared.localDeFormacao ? { localDeFormacao: prepared.localDeFormacao } : {}),
       });
+      assert.ok(prepared.localDeFormacao, "the corpus gives a local de formação, so the cover check covers it");
 
       const known = KNOWN_VIOLATIONS[specialtyId] ?? [];
       const unexpected = violations.filter((violation) => !known.some((entry) => entry.check === violation.check));
