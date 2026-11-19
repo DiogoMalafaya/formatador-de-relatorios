@@ -14,7 +14,7 @@
  */
 
 import { toRomanLowercase } from "../merge/toc.ts";
-import type { MergedHeading } from "../merge/types.ts";
+import type { MergedHeading, PageNumbering } from "../merge/types.ts";
 import { BODY_START_MARKER_ID } from "./template.ts";
 
 export interface PaginationInput {
@@ -35,6 +35,12 @@ export interface PaginationInput {
    * the generated Índice's start marker (DIO-45). Each must be in `pages`.
    */
   frontRectoMarkers?: readonly string[];
+  /**
+   * Non-heading anchors that need a sequence-local page number too — today
+   * the numbered table captions the Lista de tabelas points at (DIO-48).
+   * They never take a blank page; they only ride the shift.
+   */
+  pointAnchors?: readonly { id: string; numbering: PageNumbering }[];
 }
 
 export interface PaginationPlan {
@@ -134,6 +140,16 @@ export function planPagination(input: PaginationInput): PaginationPlan {
     tocPageNumbers.set(
       heading.id,
       heading.numbering === "roman" || finalPage < bodyStartPage ? finalPage : finalPage - bodyStartPage + 1,
+    );
+  }
+
+  for (const anchor of input.pointAnchors ?? []) {
+    const rendered = pages.get(anchor.id);
+    if (rendered === undefined) continue;
+    const finalPage = finalPageOf(rendered);
+    tocPageNumbers.set(
+      anchor.id,
+      anchor.numbering === "roman" || finalPage < bodyStartPage ? finalPage : finalPage - bodyStartPage + 1,
     );
   }
 

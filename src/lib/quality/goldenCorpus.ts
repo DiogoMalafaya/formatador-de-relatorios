@@ -123,19 +123,27 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
     ...["HUI – Hospital Universitário Imaginário", "SNF – Serviço Nacional Fictício", "UCI – Unidade de Cuidados Intensivos"].map(
       paragraph,
     ),
+    // Stale on purpose: wrong titles and only two of the three tables.
     heading(1, "Lista de Tabelas"),
     paragraph("Tabela 1 – Resumo curricular"),
     paragraph("Tabela 2 – Casuística"),
   ]);
 
+  // Long enough to run over a page, like the reference CVs' casuística, so
+  // the repeated header row is exercised (DIO-48).
   const casuistica = [["Área", "Diagnóstico", "Primeiras", "Subsequentes", "Total"]];
+  const totals = [0, 0, 0];
   areas.forEach((area, a) => {
-    for (let d = 1; d <= 5; d += 1) {
+    for (let d = 1; d <= 8; d += 1) {
       const first = 10 + a * 7 + d * 3;
       const next = 20 + a * 11 + d * 5;
+      totals[0] += first;
+      totals[1] += next;
+      totals[2] += first + next;
       casuistica.push([area, `Diagnóstico fictício ${d}`, String(first), String(next), String(first + next)]);
     }
   });
+  casuistica.push(["Total", "", ...totals.map(String)]);
 
   const chapters = await Promise.all([
     source("identificacao", "01 Identificação.docx", [
@@ -147,6 +155,7 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
     source("resumo", "02 Resumo.docx", [
       heading(1, flavour.summaryTitle),
       paragraph(prose("todo o percurso formativo")),
+      paragraph("Tabela 1 – Percurso até ao internato"),
       simpleTable([
         ["Etapa", "Descrição", "Resultado"],
         ["2013-2019", "Mestrado Integrado em Medicina", "17 valores"],
@@ -164,13 +173,17 @@ export async function buildCorpusCase(specialtyId: string): Promise<CorpusCase> 
         ["Ano", "1.º semestre", "2.º semestre"],
         ...[2021, 2022, 2023, 2024, 2025].map((year, i) => [String(year), areas[i % areas.length], areas[(i + 1) % areas.length]]),
       ]),
+      // Typed below the table, as Word puts captions by default.
+      paragraph("Tabela 2: Cronograma dos estágios"),
       ...areas.map((area) => paragraph(prose(`o estágio de ${area.toLowerCase()}`))),
     ]),
     source("assistencial", "04 Atividade assistencial.docx", [
       heading(1, "ATIVIDADE ASSISTENCIAL"),
       heading(2, "Casuística"),
       paragraph(prose("consultas e internamento")),
+      paragraph("Tabela 3 – Casuística por área e diagnóstico"),
       simpleTable(casuistica),
+      paragraph("Legenda: Primeiras – primeiras consultas; Subsequentes – consultas de seguimento."),
       heading(2, "Registos"),
       paragraph("Figura ilustrativa fictícia:"),
       imageParagraph(),

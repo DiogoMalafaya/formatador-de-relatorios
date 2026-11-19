@@ -25,6 +25,39 @@ function bodyHeading(id: string, level = 1, text = id): MergedHeading {
 }
 
 describe("planPagination", () => {
+  describe("table captions (DIO-48)", () => {
+    test("number in their sequence and ride the blank-page shift, without taking blanks of their own", () => {
+      const headings = [frontHeading("abreviaturas"), bodyHeading("parte-1"), bodyHeading("parte-2")];
+      const pages = new Map([
+        ["abreviaturas", 2],
+        ["caption-front", 2],
+        [BODY_START_MARKER_ID, 4],
+        ["parte-1", 4],
+        ["caption-1", 4],
+        ["parte-2", 5],
+        ["caption-2", 6],
+      ]);
+      const plan = planPagination({
+        headings,
+        pages,
+        totalPages: 8,
+        pointAnchors: [
+          { id: "caption-front", numbering: "roman" },
+          { id: "caption-1", numbering: "arabic" },
+          { id: "caption-2", numbering: "arabic" },
+        ],
+      });
+
+      // The body (page 4) needs a blank; that moves parte-2 to 6, a verso, so it needs one too.
+      assert.deepEqual(plan.blankAnchors, [BODY_START_MARKER_ID, "parte-2"]);
+      assert.equal(plan.bodyStartPage, 5);
+      assert.equal(plan.tocPageNumbers.get("caption-front"), 2);
+      assert.equal(plan.tocPageNumbers.get("caption-1"), 1, "absolute 5 = arabic 1");
+      assert.equal(plan.tocPageNumbers.get("caption-2"), 4, "absolute 8 = arabic 4, past both blanks");
+      assert.equal(plan.totalPages, 10);
+    });
+  });
+
   describe("Índice on a recto (DIO-45)", () => {
     test("puts a blank before an Índice that would start on a verso, and shifts the body with it", () => {
       const headings = [frontHeading("dedicatoria"), frontHeading("abreviaturas"), bodyHeading("parte-1")];

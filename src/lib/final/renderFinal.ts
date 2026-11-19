@@ -42,6 +42,7 @@ export async function renderFinalPdf(session: SessionRecord): Promise<RenderedFi
         await renderPaginatedPdf(prepared.document, {
           candidateName: prepared.candidateName,
           headings: prepared.merge.headings,
+          tableCaptions: prepared.merge.tableCaptions,
         })
       ).pdf
     : await renderPdf(prepared.document, { candidateName: prepared.candidateName });

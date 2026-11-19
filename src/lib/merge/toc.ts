@@ -133,6 +133,47 @@ export function tocPagePlaceholder(headingId: string, numbering: PageNumbering):
   return `<span class="toc-page" data-toc-heading="${escapeHtml(headingId)}" data-toc-numbering="${numbering}"></span>`;
 }
 
+/* --------------------------- Lista de tabelas --------------------------- */
+
+export const TABLE_LIST_TITLE_PT = "Lista de tabelas";
+
+/** "Lista de tabelas", "Índice de quadros", "Lista das tabelas" — accent-insensitive. */
+const TABLE_LIST_TITLE_PATTERN = /^(lista|indice|index) (de|das|dos) (tabelas|quadros)$/;
+
+export function isTableListTitle(title: string): boolean {
+  return TABLE_LIST_TITLE_PATTERN.test(normalizeTitle(title).replace(/\s+/g, " "));
+}
+
+/** One entry of the generated Lista de tabelas (DIO-48): a numbered table caption. */
+export interface TableListEntry {
+  /** Anchor id of the caption paragraph. */
+  captionId: string;
+  text: string;
+  numbering: PageNumbering;
+}
+
+/**
+ * The Lista de tabelas, in the Índice's pass-1 form: page numbers are the
+ * same placeholders, keyed by the caption's anchor id, so the same
+ * `fillTocPageNumbers` resolves them from the same page map.
+ */
+export function renderTableListHtml(entries: readonly TableListEntry[], options: { headingId?: string } = {}): string {
+  const items = entries
+    .map(
+      (entry) =>
+        `<li class="toc-entry toc-depth-2">` +
+        `<span class="toc-entry-text">${escapeHtml(entry.text)}</span>` +
+        `<span class="toc-leader"></span>` +
+        tocPagePlaceholder(entry.captionId, entry.numbering) +
+        `</li>`,
+    )
+    .join("\n");
+  // The title is a front-matter part like the abbreviations list, so it gets
+  // an Índice entry; with an id, the page map can find it.
+  const idAttr = options.headingId ? ` id="${escapeHtml(options.headingId)}"` : "";
+  return `<nav class="generated-toc generated-table-list"><h1${idAttr} class="toc-title part-title front-matter-title">${escapeHtml(TABLE_LIST_TITLE_PT)}</h1><ol class="toc-list">\n${items}\n</ol></nav>`;
+}
+
 /**
  * Dotted-leader layout for the generated Índice — ship this alongside the
  * rule-set CSS when the merge pipeline is wired up (DIO-42). Black only, per
@@ -149,6 +190,8 @@ export const GENERATED_TOC_CSS = `
 .generated-toc .toc-depth-4 { padding-left: 3em; }
 .generated-toc .toc-depth-5 { padding-left: 4.5em; }
 .generated-toc .toc-depth-6 { padding-left: 6em; }
+/* The Lista de tabelas (DIO-48) is its own front-matter page wherever it sits. */
+.generated-table-list { break-before: page; page-break-before: always; }
 
 /* Document structure (DIO-45). Part titles (chapter titles, front-matter
    titles) share one case wherever they appear, so chapter files typed in
