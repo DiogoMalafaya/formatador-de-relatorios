@@ -11,6 +11,7 @@
  */
 
 /** Payment state. Only ever advanced by the Stripe webhook (DIO-15). */
+import type { CoverDetails } from "../covers/details.ts";
 export type PaymentStatus = "unpaid" | "paid";
 
 export interface UploadRef {
@@ -92,6 +93,11 @@ export interface SessionRecord {
   specialtyId?: string;
   /** Cover template id from DIO-12. */
   coverId?: string;
+  /**
+   * Local de formação, signatories and an optional name override for the
+   * cover and página de rosto (DIO-50). Personal data: expires with the record.
+   */
+  coverDetails?: CoverDetails;
   /**
    * Guided setup wizard progress (DIO-37): 1 = upload, 2 = specialty,
    * 3 = cover, 4 = review. UI convenience so a refresh restores the current

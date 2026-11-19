@@ -18,6 +18,25 @@ export interface CoverFields {
   candidateName: string;
   /** Already HTML-escaped by `mergeCoverWithDocument`. */
   dateLabel: string;
+  /**
+   * "Internato Médico de …", already escaped. Empty when the specialty is
+   * unknown — templates render `coverLines` rather than this directly.
+   */
+  internatoPt: string;
+  /** Local de formação, "Hospital …, Cidade", already escaped. Empty when not given yet (DIO-50). */
+  localPt: string;
+}
+
+/**
+ * The internato and local de formação lines (DIO-50: MFR requires the local
+ * de formação on the cover), as `<p>`s with the given class; empty lines are
+ * left out so a cover without them yet doesn't print gaps.
+ */
+export function coverLines(fields: CoverFields, className: string): string {
+  return [fields.internatoPt, fields.localPt]
+    .filter((line) => line.length > 0)
+    .map((line) => `<p class="${className}">${line}</p>`)
+    .join("\n");
 }
 
 export interface CoverTemplate {
@@ -59,16 +78,21 @@ export const COVER_TEMPLATES: readonly CoverTemplate[] = [
   font-size: 26pt;
   font-weight: bold;
 }
+.cover-classica .cover-line {
+  margin: 0 0 6px;
+  font-size: 12pt;
+}
 .cover-classica .cover-date {
-  margin: 0;
+  margin: 34px 0 0;
   font-size: 11pt;
   color: #000;
 }
 `,
-    buildHtml: ({ candidateName, dateLabel }) => `
+    buildHtml: (fields) => `
 <p class="cover-kicker">Curriculum Vitae</p>
-<h1 class="cover-name">${candidateName}</h1>
-<p class="cover-date">${dateLabel}</p>
+<h1 class="cover-name">${fields.candidateName}</h1>
+${coverLines(fields, "cover-line")}
+<p class="cover-date">${fields.dateLabel}</p>
 `,
   },
   {
@@ -98,16 +122,26 @@ export const COVER_TEMPLATES: readonly CoverTemplate[] = [
   font-size: 13pt;
   color: #000;
 }
+.cover-moderna .cover-foot {
+  margin-top: 55%;
+}
+.cover-moderna .cover-line {
+  margin: 0 0 4px;
+  font-size: 12pt;
+}
 .cover-moderna .cover-date {
-  margin-top: 60%;
+  margin-top: 12px;
   font-size: 11pt;
   color: #000;
 }
 `,
-    buildHtml: ({ candidateName, dateLabel }) => `
-<h1 class="cover-name">${candidateName}</h1>
+    buildHtml: (fields) => `
+<h1 class="cover-name">${fields.candidateName}</h1>
 <p class="cover-kicker">Curriculum Vitae</p>
-<p class="cover-date">${dateLabel}</p>
+<div class="cover-foot">
+${coverLines(fields, "cover-line")}
+<p class="cover-date">${fields.dateLabel}</p>
+</div>
 `,
   },
   {
@@ -146,18 +180,23 @@ export const COVER_TEMPLATES: readonly CoverTemplate[] = [
   font-size: 22pt;
   font-weight: bold;
 }
+.cover-formal .cover-line {
+  margin: 0 0 6px;
+  font-size: 12pt;
+}
 .cover-formal .cover-date {
   margin-top: 32px;
   font-size: 11pt;
   color: #000;
 }
 `,
-    buildHtml: ({ candidateName, dateLabel }) => `
+    buildHtml: (fields) => `
 <p class="cover-kicker">Curriculum Vitae</p>
 <hr class="cover-rule" />
-<h1 class="cover-name">${candidateName}</h1>
+<h1 class="cover-name">${fields.candidateName}</h1>
 <hr class="cover-rule" />
-<p class="cover-date">${dateLabel}</p>
+${coverLines(fields, "cover-line")}
+<p class="cover-date">${fields.dateLabel}</p>
 `,
   },
 ];

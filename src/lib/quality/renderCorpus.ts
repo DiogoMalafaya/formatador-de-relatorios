@@ -22,6 +22,8 @@ export async function renderCorpusCase(corpusCase: CorpusCase, coverId = "classi
     ruleSetId: corpusCase.ruleSetId,
     coverId,
     dateLabel: corpusCase.dateLabel,
+    coverDetails: corpusCase.coverDetails,
+    specialtyNamePt: corpusCase.specialtyNamePt,
   });
   if (!prepared.merge) throw new Error("a golden corpus case is always multi-file");
 
@@ -31,6 +33,7 @@ export async function renderCorpusCase(corpusCase: CorpusCase, coverId = "classi
     tableCaptions: prepared.merge.tableCaptions,
     figureCaptions: prepared.merge.figureCaptions,
     lowResolutionImages: prepared.merge.lowResolutionImages,
+    rectoHeadingIds: prepared.merge.rectoHeadingIds,
   });
   return { prepared, result };
 }

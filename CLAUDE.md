@@ -379,6 +379,14 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
   placeholder only in the preview, via `prepareDocument(…, { imagePlaceholders })`).
   Kept images under 150 dpi at their placed size warn with file + page.
   "Figura N" captions feed a generated **Lista de figuras**, like tables.
+- **Front matter** (DIO-50): the wizard's Capa step also collects the local de
+  formação (hospital + city, required) and optional signatories/name override
+  (`session.coverDetails`, `src/lib/covers/details.ts`). `covers/merge.ts`
+  generates the cover's four fields, a página de rosto on a recto and, where
+  the profile requires it (`ruleSet.frontMatter`, MFR), signature blocks and
+  the candidate's last-page signature — wet-signature lines only (PRD Q10).
+  Abbreviation lists become a glossary only when every line parses
+  (`merge/glossary.ts`); a dedication/epigraph opens alone on a recto.
 - **The merge path has only ever run against synthesised fixtures.** DIO-20
   should exercise it with a real multi-file corpus before launch.
 - The PRD for the DIO-37…42 initiative is at

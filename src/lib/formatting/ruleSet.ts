@@ -131,6 +131,14 @@ export interface RuleSet {
     allowed: boolean;
   };
 
+  /** Generated front and back matter the norms require (DIO-50). */
+  frontMatter: {
+    /** Página de rosto signed by the Orientador de Formação and the Diretor do Serviço. */
+    rostoSignaturesRequired: boolean;
+    /** The candidate signs the last page. */
+    candidateSignatureRequired: boolean;
+  };
+
   constraints: {
     imagesForbidden: boolean;
     /** Tables allowed only for activity schematisation — flagged, not blocked. */
@@ -168,13 +176,14 @@ const HOUSE_PARAMETERS = {
   page: { size: "A4", color: "white", duplex: true, delivery: "print" },
   footer: { includeCandidateName: true, includePageNumber: true },
   header: { allowed: true },
+  frontMatter: { rostoSignaturesRequired: false, candidateSignatureRequired: false },
   constraints: {
     imagesForbidden: false,
     tablesRestrictedToActivitySchematization: false,
   },
 } as const satisfies Pick<
   RuleSet,
-  "font" | "title" | "lineSpacing" | "margins" | "page" | "footer" | "header" | "constraints"
+  "font" | "title" | "lineSpacing" | "margins" | "page" | "footer" | "header" | "frontMatter" | "constraints"
 >;
 
 const ALL_DIMENSIONS: readonly NormDimension[] = [
@@ -239,6 +248,9 @@ const MFR: RuleSet = {
   page: { size: "A4", color: "white", duplex: true, delivery: "print" },
   footer: { includeCandidateName: true, includePageNumber: true },
   header: { allowed: true },
+  // The title page is signed by the orientador and the diretor de serviço, and
+  // the last page by the candidate (PRD §3's summary of the MFR norms).
+  frontMatter: { rostoSignaturesRequired: true, candidateSignatureRequired: true },
   constraints: {
     imagesForbidden: true,
     tablesRestrictedToActivitySchematization: true,
@@ -297,6 +309,7 @@ const PEDIATRIA: RuleSet = {
   page: { size: "A4", color: "white", duplex: false, delivery: "pdf" },
   footer: { includeCandidateName: true, includePageNumber: true },
   header: { allowed: true },
+  frontMatter: { rostoSignaturesRequired: false, candidateSignatureRequired: false },
   constraints: {
     imagesForbidden: false,
     tablesRestrictedToActivitySchematization: false,

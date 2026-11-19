@@ -7,9 +7,12 @@ import {
 import { parseDocxDocument } from "../formatting/parseDocx.ts";
 import { getRuleSet, HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { withSourceFilename } from "../formatting/warnings.ts";
-import { resolveRuleSetId } from "../specialties/index.ts";
-import { mergeCoverWithDocument } from "../covers/merge.ts";
+import { getSpecialtyById, resolveRuleSetId } from "../specialties/index.ts";
+import { mergeCoverWithDocument, resolveCandidateName } from "../covers/merge.ts";
+import { formatLocalDeFormacao } from "../covers/details.ts";
+import type { CoverDetails } from "../covers/details.ts";
 import { mergeDocuments, GENERATED_TOC_CSS } from "../merge/index.ts";
+import { GLOSSARY_CSS } from "../merge/glossary.ts";
 import type { MergedHeading, MergeSource } from "../merge/types.ts";
 import type { TableCaption } from "../formatting/tables.ts";
 import type { NumberedCaption } from "../formatting/captions.ts";
@@ -30,6 +33,8 @@ export class DocumentNotReadyError extends Error {}
 export interface PreparedDocument {
   document: FormattedDocument;
   candidateName: string;
+  /** "Hospital …, Cidade" as printed on the cover, when given (DIO-50) — for the compliance check. */
+  localDeFormacao?: string;
   /**
    * Present only for multi-file sessions: what the paginated two-pass render
    * (DIO-42) needs beyond the document itself. Absent for a single source,
@@ -41,6 +46,8 @@ export interface PreparedDocument {
     figureCaptions: NumberedCaption[];
     /** Kept images below print resolution; the render names their page (DIO-49). */
     lowResolutionImages: AttributedLowResolutionImage[];
+    /** Front-matter headings that open on a recto (DIO-50). */
+    rectoHeadingIds: string[];
   };
 }
 
@@ -90,7 +97,7 @@ export async function prepareDocument(session: SessionRecord, options: PrepareOp
       ruleSetId,
       imagePlaceholders: options.imagePlaceholders ?? false,
     });
-    return withCover(formatted, { coverId: session.coverId });
+    return withCover(formatted, coverOptionsFor(session));
   }
 
   // --- multi-file: parse everything, warn per file, merge, format ---------
@@ -112,9 +119,26 @@ export async function prepareDocument(session: SessionRecord, options: PrepareOp
     sources: parsedSources,
     masterPosition: sources.findIndex((source) => source.index === master.index),
     ruleSetId,
-    coverId: session.coverId,
+    ...coverOptionsFor(session),
     imagePlaceholders: options.imagePlaceholders ?? false,
   });
+}
+
+/** What the generated cover and rosto need from the session (DIO-50). */
+function coverOptionsFor(session: SessionRecord): CoverOptions {
+  const specialtyNamePt = session.specialtyId ? getSpecialtyById(session.specialtyId)?.name : undefined;
+  return {
+    coverId: session.coverId,
+    ...(session.coverDetails ? { coverDetails: session.coverDetails } : {}),
+    ...(specialtyNamePt ? { specialtyNamePt } : {}),
+  };
+}
+
+interface CoverOptions {
+  coverId?: string;
+  dateLabel?: string;
+  coverDetails?: CoverDetails;
+  specialtyNamePt?: string;
 }
 
 /** One parsed source of a multi-file CV, still knowing which file it was. */
@@ -134,6 +158,10 @@ export interface AssembleOptions {
   dateLabel?: string;
   /** See `PrepareOptions.imagePlaceholders`. */
   imagePlaceholders?: boolean;
+  /** Local de formação, signatories, name override (DIO-50). */
+  coverDetails?: CoverDetails;
+  /** The specialty's display name, for the cover's internato and the rosto's exam line. */
+  specialtyNamePt?: string;
 }
 
 /**
@@ -179,33 +207,46 @@ export function assembleMultiFileDocument(options: AssembleOptions): PreparedDoc
   return withCover(
     {
       ...formatted,
-      css: `${formatted.css}\n${GENERATED_TOC_CSS}`,
+      css: `${formatted.css}\n${GENERATED_TOC_CSS}\n${GLOSSARY_CSS}`,
       extractedCandidateName: merged.candidateName ?? formatted.extractedCandidateName,
     },
-    { coverId: options.coverId, dateLabel: options.dateLabel },
+    {
+      coverId: options.coverId,
+      dateLabel: options.dateLabel,
+      coverDetails: options.coverDetails,
+      specialtyNamePt: options.specialtyNamePt,
+    },
     {
       headings: merged.headings,
       tableCaptions: merged.tableCaptions,
       figureCaptions: merged.figureCaptions,
       lowResolutionImages,
+      rectoHeadingIds: merged.rectoHeadingIds,
     },
   );
 }
 
 function withCover(
   formatted: FormattedDocument,
-  cover: { coverId?: string; dateLabel?: string },
+  cover: CoverOptions,
   merge?: PreparedDocument["merge"],
 ): PreparedDocument {
   const withCoverDocument = mergeCoverWithDocument(formatted, {
     coverId: cover.coverId,
     candidateName: formatted.extractedCandidateName,
     ...(cover.dateLabel ? { dateLabel: cover.dateLabel } : {}),
+    ...(cover.coverDetails ? { details: cover.coverDetails } : {}),
+    ...(cover.specialtyNamePt ? { specialtyNamePt: cover.specialtyNamePt } : {}),
   });
 
   return {
     document: withCoverDocument,
-    candidateName: formatted.extractedCandidateName ?? "Candidato(a)",
+    ...(cover.coverDetails ? { localDeFormacao: formatLocalDeFormacao(cover.coverDetails) } : {}),
+    // The same name everywhere: cover, rosto, footers, compliance check.
+    candidateName: resolveCandidateName({
+      candidateName: formatted.extractedCandidateName,
+      details: cover.coverDetails,
+    }),
     ...(merge ? { merge } : {}),
   };
 }

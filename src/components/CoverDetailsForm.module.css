@@ -1,0 +1,77 @@
+.form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.label {
+  composes: fieldLabel from "../styles/controls.module.css";
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font: var(--type-body-sm);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--ink-600);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font: var(--type-body);
+  color: var(--ink-900);
+  background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.input:hover,
+.input:focus {
+  border-color: var(--sage-700);
+}
+
+.hint {
+  font: var(--type-body-sm);
+  color: var(--ink-600);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.save {
+  composes: secondary from "../styles/controls.module.css";
+}
+
+.statusError {
+  composes: statusError from "../styles/controls.module.css";
+}
+
+.statusSuccess {
+  composes: statusSuccess from "../styles/controls.module.css";
+}
+
+.statusInfo {
+  composes: statusInfo from "../styles/controls.module.css";
+}

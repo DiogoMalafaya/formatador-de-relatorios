@@ -40,7 +40,8 @@ import {
   renderTocHtml,
 } from "./toc.ts";
 import type { CaptionListKind } from "./toc.ts";
-import { detectSourceCover, splitMasterAfterToc } from "./frontMatter.ts";
+import { detectSourceCover, normalizeForMatch, splitMasterAfterToc } from "./frontMatter.ts";
+import { convertAbbreviationLists } from "./glossary.ts";
 import { sourceCoverReplacedWarning, staleCaptionListReplacedWarning, staleTocReplacedWarning } from "./warnings.ts";
 import { TableDesigner } from "../formatting/tables.ts";
 import { FigureDesigner } from "../formatting/figures.ts";
@@ -75,6 +76,7 @@ export function mergeDocuments(
       replacedStaleToc: false,
       tableCaptions: [],
       figureCaptions: [],
+      rectoHeadingIds: [],
       warnings: [],
       passthrough: true,
     };
@@ -127,6 +129,10 @@ export function mergeDocuments(
     if (fenced) frontMatterBlocks = fenced;
     else afterTocFrontMatterBlocks = fenceCaptionListSection(afterTocFrontMatterBlocks, kind) ?? afterTocFrontMatterBlocks;
   }
+
+  // The abbreviations list reads as a glossary (DIO-50), when it cleanly can.
+  frontMatterBlocks = convertAbbreviationLists(frontMatterBlocks);
+  afterTocFrontMatterBlocks = convertAbbreviationLists(afterTocFrontMatterBlocks);
 
   const frontMatter = (blocks: HtmlBlock[]) =>
     emitBlocks(design(blocks, "roman"), {
@@ -276,6 +282,10 @@ export function mergeDocuments(
     replacedStaleToc: staleToc !== undefined,
     tableCaptions: tables.captions,
     figureCaptions: figures.captions,
+    // A dedication or epigraph opens on a recto, alone on its page (DIO-50).
+    rectoHeadingIds: headings
+      .filter((heading) => heading.numbering === "roman" && heading.part && RECTO_FRONT_MATTER_PATTERN.test(normalizeForMatch(heading.text)))
+      .map((heading) => heading.id),
     warnings,
     passthrough: false,
     ...(sourceCover?.candidateName ? { candidateName: sourceCover.candidateName } : {}),
@@ -283,6 +293,9 @@ export function mergeDocuments(
 }
 
 const CAPTION_LIST_KINDS: readonly CaptionListKind[] = ["table", "figure"];
+
+/** Front-matter pages that stand alone on a recto, like the reference CVs' dedication. */
+const RECTO_FRONT_MATTER_PATTERN = /^(dedicatoria|epigrafe)$/;
 
 function fenceMarkers(kind: CaptionListKind): [string, string] {
   return [`<!--lauda:stale-${kind}-list-start-->`, `<!--lauda:stale-${kind}-list-end-->`];
