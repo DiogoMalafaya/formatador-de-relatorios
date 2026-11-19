@@ -10,6 +10,8 @@ import {
   buildMasterWithListsAfterTocFixture,
   buildMasterWithoutTocFixture,
 } from "./testFixtures.ts";
+import { parseDocxDocument } from "../formatting/parseDocx.ts";
+import { buildDocx, heading, paragraph, simpleTable } from "../formatting/testFixtures.ts";
 
 describe("mergeDocuments", () => {
   let master: MergeSource;
@@ -37,6 +39,14 @@ describe("mergeDocuments", () => {
     for (const chapter of chapters) {
       for (const block of splitTopLevelBlocks(chapter.document.html)) {
         if (headingLevelOf(block.tag) !== undefined) continue;
+        if (block.tag === "table") {
+          // Tables are restyled (DIO-48): the markup around cells changes,
+          // but every cell's content must survive verbatim.
+          for (const [, inner] of block.html.matchAll(/<t[dh](?:\s[^>]*)?>([\s\S]*?)<\/t[dh]>/g)) {
+            assert.ok(result.document.html.includes(inner), `lost a table cell from ${chapter.id}: ${inner.slice(0, 80)}`);
+          }
+          continue;
+        }
         assert.ok(
           result.document.html.includes(block.html),
           `lost a <${block.tag}> block from ${chapter.id}: ${block.html.slice(0, 80)}`,
@@ -189,6 +199,91 @@ describe("mergeDocuments", () => {
       assert.match(html, /<h1 id="[^"]+" class="part-title front-matter-title">Lista de Tabelas<\/h1>/);
       assert.match(html, /<h3 id="[^"]+">Contactos<\/h3>/, "subsections are not part titles");
       assert.match(html, /toc-depth-2 toc-part"><span class="toc-entry-text">Saúde Mental/);
+    });
+  });
+
+  describe("Lista de tabelas (DIO-48)", () => {
+    let listsMaster: MergeSource;
+    let captioned: MergeSource[];
+
+    const sourceOf = async (id: string, children: Parameters<typeof buildDocx>[0]): Promise<MergeSource> => ({
+      id,
+      document: await parseDocxDocument(await buildDocx(children)),
+    });
+
+    before(async () => {
+      listsMaster = await buildMasterWithListsAfterTocFixture();
+      captioned = [
+        await sourceOf("cap-a", [
+          heading(1, "Atividade assistencial"),
+          paragraph("Tabela 4 – Consultas por ano"),
+          simpleTable([["Ano", "Consultas", "Notas"], ["2024", "111", "a"], ["2025", "222", "b"]]),
+        ]),
+        await sourceOf("cap-b", [
+          heading(1, "Atividade cirúrgica"),
+          simpleTable([["Área", "Atos", "Notas"], ["Joelho", "12", "a"], ["Anca", "7", "b"]]),
+          paragraph("Tabela 1: Atos por área"),
+        ]),
+      ];
+    });
+
+    test("captions are numbered across chapter files in document order", () => {
+      const result = mergeDocuments(master, captioned);
+      assert.deepEqual(
+        result.tableCaptions.map((caption) => [caption.text, caption.numbering]),
+        [
+          ["Tabela 1. Consultas por ano", "arabic"],
+          ["Tabela 2. Atos por área", "arabic"],
+        ],
+      );
+      // The caption below the second table was moved above it.
+      const html = result.document.html;
+      assert.ok(html.indexOf("Tabela 2.</span> Atos por área") < html.indexOf("<p>Joelho</p>"));
+    });
+
+    test("without a stale list, the generated one goes right after the Índice", () => {
+      const result = mergeDocuments(master, captioned);
+      const html = result.document.html;
+      const tocEnd = html.indexOf("</nav>");
+      const list = html.indexOf('<nav class="generated-toc generated-table-list">');
+      assert.ok(list > tocEnd && list < tocEnd + 20, "Lista de tabelas follows the Índice");
+      assert.match(html, /data-toc-heading="table-caption-1" data-toc-numbering="arabic"/);
+      assert.match(html, /<span class="toc-entry-text">Tabela 2\. Atos por área<\/span>/);
+      assert.ok(!result.warnings.some((warning) => warning.code === "stale-table-list-replaced"));
+      const listEntry = result.tocEntries.find((entry) => entry.text === "Lista de tabelas");
+      assert.deepEqual(
+        { numbering: listEntry?.numbering, part: listEntry?.part },
+        { numbering: "roman", part: true },
+        "listed in the Índice as front matter",
+      );
+      assert.match(html, /<h1 id="merged-heading-table-list" class="toc-title part-title front-matter-title">Lista de tabelas<\/h1>/);
+    });
+
+    test("the master's stale list is replaced in place, and leaves the Índice", () => {
+      const result = mergeDocuments(listsMaster, captioned);
+      const html = result.document.html;
+      assert.doesNotMatch(html, /Consultas fictícias/, "the stale entry is gone");
+      assert.equal((html.match(/generated-table-list/g) ?? []).length, 1);
+      // In place: after the abbreviations list, before the body.
+      assert.ok(html.indexOf("generated-table-list") > html.indexOf("Lista de Abreviaturas e Siglas</h1>"));
+      assert.ok(html.indexOf("generated-table-list") < html.indexOf("Nome: Beatriz"));
+      assert.ok(!result.headings.some((h) => h.text === "Lista de Tabelas"), "the stale heading is gone");
+      // The generated list takes its place in the Índice, between the abbreviations and the body.
+      const titles = result.tocEntries.map((entry) => entry.text);
+      assert.deepEqual(
+        titles.slice(titles.indexOf("Lista de Abreviaturas e Siglas"), titles.indexOf("Lista de Abreviaturas e Siglas") + 3),
+        ["Lista de Abreviaturas e Siglas", "Lista de tabelas", "Identificação"],
+      );
+      assert.ok(result.warnings.some((warning) => warning.code === "stale-table-list-replaced"));
+    });
+
+    test("with no captions, the student's own list is kept and nothing is generated", () => {
+      const result = mergeDocuments(listsMaster, chapters);
+      const html = result.document.html;
+      assert.match(html, /Consultas fictícias/);
+      assert.doesNotMatch(html, /generated-table-list/);
+      assert.doesNotMatch(html, /lauda:stale-table-list/);
+      assert.deepEqual(result.tableCaptions, []);
     });
   });
 });

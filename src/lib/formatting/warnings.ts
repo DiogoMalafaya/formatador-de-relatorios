@@ -17,6 +17,8 @@ export type FormattingWarningCode =
   | "stale-toc-replaced"
   /** Emitted by the merge engine (DIO-45) when the master's own cover is dropped. */
   | "source-cover-replaced"
+  /** Emitted by the merge engine (DIO-48) when the master's own Lista de tabelas is regenerated. */
+  | "stale-table-list-replaced"
   /** Exact-count variants, emitted by the two-pass render (DIO-42) once a real page map exists. */
   | "page-limit-exceeded"
   /** The PDF compliance checker (DIO-47) found the output breaking a rule of the profile. */

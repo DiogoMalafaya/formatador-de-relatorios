@@ -61,6 +61,7 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
     const rendered = await renderPaginatedPdf(watermarked, {
       candidateName: prepared.candidateName,
       headings: prepared.merge.headings,
+      tableCaptions: prepared.merge.tableCaptions,
     });
     pdf = rendered.pdf;
     renderWarnings = rendered.warnings;

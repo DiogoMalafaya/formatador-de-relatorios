@@ -28,6 +28,7 @@ export async function renderCorpusCase(corpusCase: CorpusCase, coverId = "classi
   const result = await renderPaginatedPdf(prepared.document, {
     candidateName: prepared.candidateName,
     headings: prepared.merge.headings,
+    tableCaptions: prepared.merge.tableCaptions,
   });
   return { prepared, result };
 }

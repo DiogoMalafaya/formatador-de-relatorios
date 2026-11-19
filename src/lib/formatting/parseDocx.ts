@@ -16,6 +16,11 @@ const STYLE_MAP = [
   "p[style-name='Heading 2'] => h2:fresh",
   "p[style-name='Heading 3'] => h3:fresh",
   "p[style-name='Title'] => h1:fresh",
+  // Word's built-in caption style: stored as "caption", shown as "Legenda"
+  // in a pt-PT Word. Table captions are recognised by text too (tables.ts).
+  "p[style-name='caption'] => p.caption:fresh",
+  "p[style-name='Caption'] => p.caption:fresh",
+  "p[style-name='Legenda'] => p.caption:fresh",
 ];
 
 export interface ParsedDocument {

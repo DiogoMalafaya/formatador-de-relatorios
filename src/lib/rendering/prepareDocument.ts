@@ -11,6 +11,7 @@ import { resolveRuleSetId } from "../specialties/index.ts";
 import { mergeCoverWithDocument } from "../covers/merge.ts";
 import { mergeDocuments, GENERATED_TOC_CSS } from "../merge/index.ts";
 import type { MergedHeading, MergeSource } from "../merge/types.ts";
+import type { TableCaption } from "../formatting/tables.ts";
 import { getMasterSource, getOrderedSources } from "../session/sources.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 import type { SessionRecord } from "../session/types.ts";
@@ -33,6 +34,7 @@ export interface PreparedDocument {
    */
   merge?: {
     headings: MergedHeading[];
+    tableCaptions: TableCaption[];
   };
 }
 
@@ -142,14 +144,14 @@ export function assembleMultiFileDocument(options: AssembleOptions): PreparedDoc
       extractedCandidateName: merged.candidateName ?? formatted.extractedCandidateName,
     },
     { coverId: options.coverId, dateLabel: options.dateLabel },
-    { headings: merged.headings },
+    { headings: merged.headings, tableCaptions: merged.tableCaptions },
   );
 }
 
 function withCover(
   formatted: FormattedDocument,
   cover: { coverId?: string; dateLabel?: string },
-  merge?: { headings: MergedHeading[] },
+  merge?: { headings: MergedHeading[]; tableCaptions: TableCaption[] },
 ): PreparedDocument {
   const withCoverDocument = mergeCoverWithDocument(formatted, {
     coverId: cover.coverId,

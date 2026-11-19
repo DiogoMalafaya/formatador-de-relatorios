@@ -15,6 +15,8 @@
  */
 
 import { parseDocxDocument } from "./parseDocx.ts";
+import { TableDesigner } from "./tables.ts";
+import { splitTopLevelBlocks } from "../merge/blocks.ts";
 import type { ParsedDocument } from "./parseDocx.ts";
 import { extractCandidateName } from "./extractName.ts";
 import { getRuleSet } from "./ruleSet.ts";
@@ -114,9 +116,20 @@ export function formatParsedDocument(
   };
 }
 
+/**
+ * Single-file entry point. Tables are designed here (DIO-48); the merge
+ * engine does the same for multi-file CVs, numbering captions across files.
+ * A single file has no generated front matter, so no Lista de tabelas.
+ */
 export async function applyFormatting(
   buffer: Buffer,
   options: ApplyFormattingOptions,
 ): Promise<FormattedDocument> {
-  return formatParsedDocument(await parseDocxDocument(buffer), options);
+  const parsed = await parseDocxDocument(buffer);
+  if (!/<table[\s>]/i.test(parsed.html)) return formatParsedDocument(parsed, options);
+  const designed = new TableDesigner()
+    .designBlocks(splitTopLevelBlocks(parsed.html), "arabic")
+    .map((block) => block.html)
+    .join("\n");
+  return formatParsedDocument({ ...parsed, html: designed }, options);
 }

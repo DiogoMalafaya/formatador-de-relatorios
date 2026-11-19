@@ -42,6 +42,7 @@ import {
 } from "./template.ts";
 import { fillTocPageNumbers } from "../merge/toc.ts";
 import type { MergedHeading } from "../merge/types.ts";
+import type { TableCaption } from "../formatting/tables.ts";
 import { pageLimitExceededWarning, summaryTooLongWarning } from "../formatting/warnings.ts";
 import { printMargins } from "../formatting/ruleSet.ts";
 import { serveEmbeddedFonts } from "./fonts.ts";
@@ -55,6 +56,8 @@ export interface PaginatedRenderOptions {
   candidateName: string;
   /** Merged headings in document order, from `mergeDocuments` (DIO-41). */
   headings: MergedHeading[];
+  /** Numbered table captions, for the Lista de tabelas' page numbers (DIO-48). */
+  tableCaptions?: readonly TableCaption[];
 }
 
 /** What actually happened, for validations, tests and timing reports. Never contains document text. */
@@ -90,12 +93,18 @@ export async function renderPaginatedPdf(
 ): Promise<PaginatedRenderResult> {
   const startedAt = Date.now();
   const { headings } = options;
+  const tableCaptions = options.tableCaptions ?? [];
   const { ruleSet } = document;
 
   const baseHtml = injectTocStartMarker(injectBodyStartMarker(document.html, headings));
   const frontRectoMarkers = baseHtml.includes(buildTocStartMarker()) ? [TOC_START_MARKER_ID] : [];
   const css = [document.css, PAGINATION_CSS, PAGE_MAP_PROBE_CSS, buildPartBreakCss(headings)].join("\n");
-  const anchorIds = [...frontRectoMarkers, BODY_START_MARKER_ID, ...headings.map((h) => h.id)];
+  const anchorIds = [
+    ...frontRectoMarkers,
+    BODY_START_MARKER_ID,
+    ...headings.map((h) => h.id),
+    ...tableCaptions.map((caption) => caption.id),
+  ];
   const probeHtml = buildPageMapProbeHtml(anchorIds);
 
   const passMs: number[] = [];
@@ -135,6 +144,7 @@ export async function renderPaginatedPdf(
         totalPages: map.contentPageCount,
         existingBlanks: new Set(blankCounts.keys()),
         frontRectoMarkers,
+        pointAnchors: tableCaptions,
       });
       passMs.push(Date.now() - passStart);
 

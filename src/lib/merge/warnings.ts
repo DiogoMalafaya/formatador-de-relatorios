@@ -22,3 +22,12 @@ export function staleTocReplacedWarning(): FormattingWarning {
       "O Índice do teu documento principal estava desatualizado e foi substituído por um índice gerado automaticamente, com os números de página do documento final.",
   };
 }
+
+/** The master's own Lista de tabelas was replaced by one generated from the numbered captions (DIO-48). */
+export function staleTableListReplacedWarning(): FormattingWarning {
+  return {
+    code: "stale-table-list-replaced",
+    messagePt:
+      "A lista de tabelas do teu documento principal foi substituída por uma lista gerada a partir das legendas das tabelas, com os números de página do documento final.",
+  };
+}

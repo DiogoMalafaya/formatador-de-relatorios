@@ -368,8 +368,11 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
 - **Upload caps are unconfirmed** (20 files / 60 MB / 20 MB) — PRD §12 Q1.
 - **Heading-depth assignment**: automatic-with-override is implemented and the
   default; fully-manual is still a live product option — PRD §12 Q2.
-- **Tables render without borders** today, visible in the hero samples (e.g. the
-  internato table). Noted in PR #25; no ticket yet.
+- **Tables are designed** (DIO-48, `src/lib/formatting/tables.ts`): header row
+  (promoted when Word didn't mark one), numeric columns, Total row, captions
+  renumbered above each table and a generated **Lista de tabelas** with exact
+  pages. Table colours are provisional tokens (`TABLE_TOKENS` in `styles.ts`)
+  until the house themes (DIO-56). The hero samples predate this and are stale.
 - **The merge path has only ever run against synthesised fixtures.** DIO-20
   should exercise it with a real multi-file corpus before launch.
 - The PRD for the DIO-37…42 initiative is at
