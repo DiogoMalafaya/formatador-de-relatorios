@@ -1,6 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { renderPaginatedPdf } from "./renderPaginated.ts";
 import { extractPageMap } from "./pageMap.ts";
 import { mergeDocuments } from "../merge/index.ts";
@@ -56,7 +57,7 @@ async function mergedFixture() {
     extraWarnings: merged.warnings,
   });
 
-  return { document, headings: merged.headings };
+  return { document, headings: merged.headings, merged };
 }
 
 describe("renderPaginatedPdf", () => {
@@ -84,21 +85,24 @@ describe("renderPaginatedPdf", () => {
     const loaded = await PDFDocument.load(result.pdf);
     assert.equal(loaded.getPageCount(), report.totalPages, "probe pages are stripped before output");
 
-    // Numbering: the cover carries no footer, front matter is roman, and the
-    // body restarts at arabic 1 exactly at bodyStartPage.
+    // Numbering (DIO-51): one arabic sequence from the cover. The cover and
+    // the blank fillers show nothing; every other page shows its own number.
     assert.equal(report.pageLabels[0], null, "the cover page carries no footer");
     assert.equal(report.pageLabels.length, report.totalPages);
     assert.ok(report.bodyStartPage > 1, "the fixture's front matter precedes the body");
-    assert.equal(report.pageLabels[report.bodyStartPage - 1], "1", "the body restarts at 1");
-    assert.equal(report.pageLabels[report.bodyStartPage], "2", "and counts up from there");
-
-    for (let page = 2; page < report.bodyStartPage; page += 1) {
-      assert.match(
-        String(report.pageLabels[page - 1]),
-        /^[ivxlcdm]+$/,
-        `front-matter page ${page} should be lowercase roman`,
-      );
+    const blanks = new Set(report.blankPages);
+    for (let page = 2; page <= report.totalPages; page += 1) {
+      assert.equal(report.pageLabels[page - 1], blanks.has(page) ? null : String(page), `page ${page}`);
     }
+
+    // Blank fillers carry no marks at all: no text, no footer, no number.
+    const loading = getDocument({ data: new Uint8Array(result.pdf), verbosity: 0 });
+    const pdfjs = await loading.promise;
+    for (const blank of report.blankPages) {
+      const content = await (await pdfjs.getPage(blank)).getTextContent();
+      assert.equal(content.items.length, 0, `blank page ${blank} must be empty`);
+    }
+    await loading.destroy();
 
     assert.ok(report.timings.totalMs > 0);
     assert.equal(report.timings.passMs.length, report.passes);
@@ -126,6 +130,42 @@ describe("renderPaginatedPdf", () => {
     // Whatever else happens, the body must open on a recto page — that is the
     // entire reason blanks get inserted.
     assert.equal(report.bodyStartPage % 2, 1, "the body starts on a recto page");
+  });
+
+  test("every Índice number is the page its heading is printed on — zero tolerance (DIO-51)", async () => {
+    const { document, headings } = await mergedFixture();
+    const result = await renderPaginatedPdf(document, { candidateName: "Ana Pereira", headings });
+
+    // Read the Índice off the PDF itself: "TITLE ... N" lines on its page.
+    const loading = getDocument({ data: new Uint8Array(result.pdf), verbosity: 0 });
+    const pdfjs = await loading.promise;
+    const tocPage = result.report.tocStartPage;
+    assert.ok(tocPage, "the fixture has an Índice");
+    const tocText = (await (await pdfjs.getPage(tocPage)).getTextContent()).items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join(" ");
+    await loading.destroy();
+
+    let checked = 0;
+    for (const heading of headings.filter((h) => h.level <= 3)) {
+      const printed = result.report.headingPages[heading.id];
+      // Case-insensitive: the stylesheet may uppercase part titles.
+      const shown = new RegExp(`${heading.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+(\\d+)`, "iu").exec(tocText);
+      if (!shown) continue;
+      assert.equal(Number(shown[1]), printed, `${heading.text}: Índice says ${shown[1]}, printed on ${printed}`);
+      // ...and the footer on that page says the same (page 1 counts but shows nothing).
+      assert.equal(result.report.pageLabels[printed - 1], printed === 1 ? null : shown[1]);
+      checked += 1;
+    }
+    assert.equal(checked, headings.length, "every heading's Índice entry was checked");
+  });
+
+  test("a PDF-delivered profile (Pediatria) gets no blank fillers (PRD Q12)", async () => {
+    const { headings, merged } = await mergedFixture();
+    const pediatria = formatParsedDocument(merged.document, { ruleSetId: "pediatria" }, { extraWarnings: merged.warnings });
+    const { report } = await renderPaginatedPdf(pediatria, { candidateName: "Ana Pereira", headings });
+    assert.deepEqual(report.blankPages, []);
+    assert.equal(report.passes, 2, "still converges in two passes");
   });
 
   test("flags an over-long document with the exact count, not an estimate", async () => {

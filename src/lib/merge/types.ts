@@ -23,7 +23,12 @@ export interface MergeSource {
   document: ParsedDocument;
 }
 
-/** Which page-numbering sequence a heading's page belongs to. */
+/**
+ * Front matter ("roman") or body ("arabic"). Since DIO-51 the whole document
+ * is one arabic sequence from the cover, so this no longer picks a numeral
+ * style: it classifies, and drives part breaks, recto starts and running
+ * headers. The values keep their DIO-42 names to avoid churn.
+ */
 export type PageNumbering = "roman" | "arabic";
 
 /** A heading in the merged document, addressable by the anchor id injected into the HTML. */

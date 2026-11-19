@@ -309,7 +309,8 @@ function colourToHex(args: unknown[]): string {
 /** The footer may hold the candidate's name and/or a page label (arabic or roman), and nothing else. */
 function footerMatches(text: string, candidateName: string, ruleSet: RuleSet): boolean {
   const name = normalizeForMatch(candidateName);
-  const label = "(\\d+|[ivxlcdm]+)";
+  // One arabic sequence from the cover (DIO-51): a roman label is a regression.
+  const label = "\\d+";
   const parts: string[] = [];
   if (ruleSet.footer.includeCandidateName) parts.push(escapeRegExp(name));
   if (ruleSet.footer.includePageNumber) parts.push(label);

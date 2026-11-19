@@ -7,7 +7,6 @@ import {
   fillTocPageNumbers,
   formatTocPageNumber,
   renderTocHtml,
-  toRomanLowercase,
 } from "./toc.ts";
 import { mergeDocuments } from "./merge.ts";
 import type { MergeSource } from "./types.ts";
@@ -71,25 +70,24 @@ describe("Índice generation and page-number fill", () => {
     chapters = await buildChapterFixtures();
   });
 
-  test("round-trips with a page map — roman for front matter, arabic for the body", () => {
+  test("round-trips with a page map — the page as printed, arabic throughout (DIO-51)", () => {
     const result = mergeDocuments(master, chapters);
 
     const pageMap = new Map<string, number>();
-    let romanPage = 2; // cover is page i
-    let arabicPage = 1;
+    let page = 2; // the cover is page 1
     for (const heading of result.headings) {
-      pageMap.set(heading.id, heading.numbering === "roman" ? romanPage++ : (arabicPage += 3) - 3);
+      pageMap.set(heading.id, page);
+      page += heading.numbering === "roman" ? 1 : 3;
     }
 
     const filled = fillTocPageNumbers(result.document.html, pageMap);
     assert.deepEqual(filled.missingHeadingIds, []);
     // No unresolved placeholders remain.
     assert.ok(!filled.html.includes("data-toc-heading"));
-    // Front-matter entries (Estrutura do Documento, Dedicatória) show roman pages ii and iii.
-    assert.match(filled.html, /<span class="toc-page">ii<\/span>/);
-    assert.match(filled.html, /<span class="toc-page">iii<\/span>/);
-    // First body entry shows arabic page 1.
-    assert.match(filled.html, /<span class="toc-page">1<\/span>/);
+    // Front matter and body share one sequence: pages 2 and 3, never "ii".
+    assert.match(filled.html, /<span class="toc-page">2<\/span>/);
+    assert.match(filled.html, /<span class="toc-page">3<\/span>/);
+    assert.doesNotMatch(filled.html, /<span class="toc-page">[ivxlcdm]+<\/span>/);
     // Entry text and dotted-leader slot are in place for a chapter entry.
     assert.match(
       filled.html,
@@ -133,22 +131,8 @@ describe("Índice generation and page-number fill", () => {
   });
 });
 
-describe("roman numerals", () => {
-  test("converts the front-matter range correctly", () => {
-    assert.equal(toRomanLowercase(1), "i");
-    assert.equal(toRomanLowercase(4), "iv");
-    assert.equal(toRomanLowercase(9), "ix");
-    assert.equal(toRomanLowercase(14), "xiv");
-    assert.equal(toRomanLowercase(40), "xl");
-    assert.equal(toRomanLowercase(2026), "mmxxvi");
-  });
-
-  test("rejects non-positive input", () => {
-    assert.throws(() => toRomanLowercase(0), RangeError);
-  });
-
-  test("formatTocPageNumber picks the sequence's display form", () => {
-    assert.equal(formatTocPageNumber(3, "roman"), "iii");
-    assert.equal(formatTocPageNumber(3, "arabic"), "3");
+describe("formatTocPageNumber", () => {
+  test("prints the page as is — no roman numerals since DIO-51", () => {
+    assert.equal(formatTocPageNumber(3), "3");
   });
 });
