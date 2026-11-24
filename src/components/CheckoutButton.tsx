@@ -20,9 +20,14 @@ interface CheckoutButtonProps {
    * from what Stripe actually charges.
    */
   priceLabelPt: string;
+  /**
+   * Set while the page budget is over the profile's cap (DIO-54): the button
+   * is disabled and says why. The checkout route refuses it regardless.
+   */
+  blockedMessagePt?: string | null;
 }
 
-export default function CheckoutButton({ priceLabelPt }: CheckoutButtonProps) {
+export default function CheckoutButton({ priceLabelPt, blockedMessagePt }: CheckoutButtonProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +64,8 @@ export default function CheckoutButton({ priceLabelPt }: CheckoutButtonProps) {
         type="button"
         className={styles.button}
         onClick={() => void startCheckout()}
-        disabled={status === "loading"}
+        disabled={status === "loading" || Boolean(blockedMessagePt)}
+        aria-describedby={blockedMessagePt ? "checkout-blocked" : undefined}
       >
         <Icon name="lock" />
         {status === "loading"
@@ -67,7 +73,13 @@ export default function CheckoutButton({ priceLabelPt }: CheckoutButtonProps) {
           : `Comprar download sem marca de água — ${priceLabelPt}`}
       </button>
 
-      {error && (
+      {blockedMessagePt && (
+        <p id="checkout-blocked" className={styles.statusError}>
+          {blockedMessagePt}
+        </p>
+      )}
+
+      {error && !blockedMessagePt && (
         <p className={styles.statusError} role="alert">
           {error}
         </p>

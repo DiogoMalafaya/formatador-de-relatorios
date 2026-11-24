@@ -199,6 +199,19 @@ why DIO-40/41/42 exist.
 - **Recto starts are for print-delivered profiles only** (`page.delivery ===
   "print"`, e.g. MFR). A PDF-delivered profile (Pediatria) gets no fillers
   (`planPagination({ rectoStarts: false })`, PRD Q12).
+- **Chapter dividers (DIO-54)** are opt-in (`session.chapterDividers`, a
+  workspace toggle). Each body major part gets a divider page (number +
+  title, at the title size so MFR's size rule holds; typographic, white)
+  injected right before its heading and right *after* the body-start
+  marker. Dividers are `bodyRectoMarkers` in the plan, so in print each one
+  takes a recto and the chapter heading behind it takes the next recto,
+  with a truly blank verso between. That makes the cost exact and known
+  before any render (`chapterDividerPageCost`: 2 pages per chapter in print,
+  1 as a PDF), which is what the live **page budget** relies on
+  (`rendering/pageBudget.ts`, `/api/session/page-budget`). A budget over
+  the profile's cap disables checkout and the checkout route refuses it; a
+  count only applies while `renderInputsKey` still matches the session.
+  Theme-styled dividers and the accent verso belong to DIO-56.
 - **Exact-count validations:** the profile's page cap and its summary-section cap are
   checked against the real page count, superseding the estimate for a paginated
   render. Results land on the session record (`artifacts.renderWarnings`,
@@ -338,7 +351,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **356 tests passing** on `main`. Some suites launch a real
+Current baseline: **466 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions

@@ -4,7 +4,9 @@ import { getOrderedSources } from "@/lib/session/sources";
 import { CURRENCY, PRICE_EUR_CENTS } from "@/lib/payment/pricing";
 import { getStripeClient } from "@/lib/stripe";
 import { SESSION_EXPIRED_PT, SPECIALTY_RESELECT_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
-import { needsSpecialtyReselection } from "@/lib/specialties";
+import { needsSpecialtyReselection, resolveRuleSetId } from "@/lib/specialties";
+import { getRuleSet } from "@/lib/formatting/ruleSet";
+import { computePageBudget, pageCapBlockedMessagePt } from "@/lib/rendering/pageBudget";
 
 const PAYMENT_START_FAILED_PT = "Não foi possível iniciar o pagamento. Tenta novamente.";
 
@@ -48,6 +50,19 @@ export async function POST(request: Request) {
         ok: false,
         errorMessagePt: "Este currículo já foi pago.",
       },
+      { status: 409 },
+    );
+  }
+
+  // A CV over its Colégio's page cap would be refused at submission, so it
+  // can't be bought (DIO-54). Only a count that still matches the session's
+  // inputs blocks: an unknown count never does, since the preview is free
+  // and optional. Uses the stored render only — no re-render on checkout.
+  const ruleSet = getRuleSet(resolveRuleSetId(session.specialtyId ?? ""));
+  const budget = computePageBudget({ session, maxPages: ruleSet.constraints.maxPages });
+  if (budget.overCap) {
+    return Response.json(
+      { ok: false, errorMessagePt: pageCapBlockedMessagePt(budget) },
       { status: 409 },
     );
   }

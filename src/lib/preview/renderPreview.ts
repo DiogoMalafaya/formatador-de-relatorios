@@ -39,6 +39,8 @@ export interface RenderedPreview {
   renderWarnings?: FormattingWarning[];
   /** Exact page count of the rendered document, when the paginated render produced one. */
   pageCount?: number;
+  /** Pages chapter dividers add (DIO-54), when the paginated render ran. */
+  dividerPageCost?: number;
 }
 
 export async function renderPreviewPdf(session: SessionRecord): Promise<RenderedPreview> {
@@ -57,6 +59,7 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
   let pdf: Buffer;
   let renderWarnings: FormattingWarning[] | undefined;
   let pageCount: number | undefined;
+  let dividerPageCost: number | undefined;
   if (prepared.merge) {
     const rendered = await renderPaginatedPdf(watermarked, {
       candidateName: prepared.candidateName,
@@ -65,10 +68,12 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
       figureCaptions: prepared.merge.figureCaptions,
       lowResolutionImages: prepared.merge.lowResolutionImages,
       rectoHeadingIds: prepared.merge.rectoHeadingIds,
+      chapterDividers: session.chapterDividers === true,
     });
     pdf = rendered.pdf;
     renderWarnings = rendered.warnings;
     pageCount = rendered.report.totalPages;
+    dividerPageCost = rendered.report.dividerPageCost;
   } else {
     pdf = await renderPdf(watermarked, { candidateName: prepared.candidateName });
   }
@@ -91,5 +96,5 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
   const storageKey = `${session.id}/preview.pdf`;
   await putObject(storageKey, pdf, PREVIEW_CONTENT_TYPE);
 
-  return { storageKey, pdf, renderWarnings, pageCount };
+  return { storageKey, pdf, renderWarnings, pageCount, dividerPageCost };
 }

@@ -116,3 +116,65 @@ export const PAGE_MAP_PROBE_CSS = `
 .page-map-probe { break-before: page; page-break-before: always; }
 .page-map-probe-link { display: block; font-size: 8pt; line-height: 2; color: #000; text-decoration: none; }
 `;
+
+/* ------------------------------------------------------------------------ *
+ * Chapter dividers (DIO-54, PRD US7).                                      *
+ * ------------------------------------------------------------------------ */
+
+/** Anchor id of the divider page that opens the chapter headed by `headingId`. */
+export function chapterDividerId(headingId: string): string {
+  return `dio54-divider-${headingId}`;
+}
+
+/**
+ * One divider page: the chapter's number and title, alone on a page, placed
+ * right before the chapter heading. Typographic only — no rule, no colour —
+ * so it's compliant under a profile that forbids graphics or colour (MFR).
+ * The house theme's accent-filled verso belongs to the themes (DIO-56).
+ */
+export function buildChapterDividerHtml(heading: { id: string; text: string; number?: string }): string {
+  const number = heading.number?.replace(/\.$/, "");
+  const numberHtml = number ? `<p class="chapter-divider-number">${escapeHtml(number)}</p>\n` : "";
+  return `<section id="${chapterDividerId(heading.id)}" class="chapter-divider">\n${numberHtml}<p class="chapter-divider-title">${escapeHtml(heading.text)}</p>\n</section>`;
+}
+
+/**
+ * Divider page CSS. Text stays at the profile's title size: the compliance
+ * checker holds explicit profiles to their stated sizes (MFR: titles 12 or
+ * 14 pt), so a large display numeral would be a violation there. Bigger,
+ * theme-styled dividers come with the house themes (DIO-56).
+ *
+ * The divider breaks *after* itself, so the chapter heading opens the next
+ * page; the break *before* each divider but the first is added per id (see
+ * `buildPartBreakCss`), for the same reason the first part heading gets none.
+ */
+export function buildChapterDividerCss(titleSizePt: number): string {
+  return `
+.chapter-divider {
+  break-after: page;
+  page-break-after: always;
+  break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* One page exactly, like the blank filler: under the printable height of
+     every profile's margins, and never spilling onto a second page. */
+  height: 23.5cm;
+  overflow: hidden;
+  text-align: center;
+}
+.chapter-divider p { margin: 0; text-align: center; text-indent: 0; hyphens: manual; }
+.chapter-divider .chapter-divider-number {
+  font-weight: bold;
+  font-size: ${titleSizePt}pt;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.6em;
+}
+.chapter-divider .chapter-divider-title {
+  font-weight: bold;
+  font-size: ${titleSizePt}pt;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+`;
+}

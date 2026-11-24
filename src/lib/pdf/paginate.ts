@@ -22,6 +22,7 @@
  */
 
 import type { MergedHeading, PageNumbering } from "../merge/types.ts";
+import type { Delivery } from "../formatting/ruleSet.ts";
 import { BODY_START_MARKER_ID } from "./template.ts";
 
 export interface PaginationInput {
@@ -42,6 +43,12 @@ export interface PaginationInput {
    * the generated Índice's start marker (DIO-45). Each must be in `pages`.
    */
   frontRectoMarkers?: readonly string[];
+  /**
+   * Marker anchors in the body that must open on a recto — today the
+   * chapter divider pages (DIO-54). Each must be in `pages`; their final
+   * pages are reported in `markerPages` like the front-matter markers'.
+   */
+  bodyRectoMarkers?: readonly string[];
   /**
    * Insert blank fillers so parts open on a recto. Default true; false for a
    * PDF-delivered profile (DIO-51, PRD Q12) — then the plan never adds blanks
@@ -112,9 +119,14 @@ export function planPagination(input: PaginationInput): PaginationPlan {
   };
   const partLevel = partHeadingLevel(headings);
   const frontRectoMarkers = input.frontRectoMarkers ?? [];
+  const bodyRectoMarkers = input.bodyRectoMarkers ?? [];
   if (input.rectoStarts ?? true) {
     for (const marker of frontRectoMarkers) push(marker, pages.get(marker));
     push(BODY_START_MARKER_ID, bodyStartRendered);
+    // The first divider shares the body's opening page with the body-start
+    // marker, so the dedup above folds it into the marker: one blank, one
+    // anchor, the same choice on every pass.
+    for (const marker of bodyRectoMarkers) push(marker, pages.get(marker));
     for (const heading of headings) {
       if (heading.numbering !== "arabic" || heading.level !== partLevel) continue;
       push(heading.id, pages.get(heading.id));
@@ -175,7 +187,7 @@ export function planPagination(input: PaginationInput): PaginationPlan {
   }
 
   const markerPages = new Map<string, number>();
-  for (const marker of frontRectoMarkers) {
+  for (const marker of [...frontRectoMarkers, ...bodyRectoMarkers]) {
     const rendered = pages.get(marker);
     if (rendered !== undefined) markerPages.set(marker, finalPageOf(rendered));
   }
@@ -214,6 +226,33 @@ export function partHeadingLevel(headings: readonly MergedHeading[]): number | u
     if (level === undefined || heading.level < level) level = heading.level;
   }
   return level;
+}
+
+/**
+ * The body's major parts — the headings that open a chapter, get a part
+ * break, a recto start and, when the student asks for them, a divider page
+ * (DIO-54). Same level rule as `partHeadingLevel`.
+ */
+export function partHeadings(headings: readonly MergedHeading[]): MergedHeading[] {
+  const level = partHeadingLevel(headings);
+  if (level === undefined) return [];
+  return headings.filter((heading) => heading.numbering === "arabic" && heading.level === level);
+}
+
+/**
+ * Exactly how many pages chapter dividers add (DIO-54), known before any
+ * render so the workspace's page budget can show the cost of the toggle.
+ *
+ * Print delivery: each divider takes a recto and its verso stays blank, so
+ * the chapter itself still opens on the next recto — two pages per chapter.
+ * Everything after shifts by an even count, so parity and every later blank
+ * decision is unchanged. PDF delivery has no recto starts: one page each.
+ */
+export function chapterDividerPageCost(
+  headings: readonly MergedHeading[],
+  delivery: Delivery,
+): number {
+  return partHeadings(headings).length * (delivery === "print" ? 2 : 1);
 }
 
 /**
