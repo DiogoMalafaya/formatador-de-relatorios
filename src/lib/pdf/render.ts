@@ -16,7 +16,7 @@
 import { PDFDocument } from "pdf-lib";
 import { launchBrowser } from "./browser.ts";
 import { buildHtmlDocument } from "./template.ts";
-import { stampPages } from "./stamp.ts";
+import { furnitureLayout, stampPages } from "./stamp.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 import { printMargins } from "../formatting/ruleSet.ts";
 import { serveEmbeddedFonts } from "./fonts.ts";
@@ -62,6 +62,7 @@ export async function renderPdf(document: FormattedDocument, options: RenderPdfO
       fontFamily: document.fontFamily,
       includeCandidateName: ruleSet.footer.includeCandidateName,
       includePageNumber: ruleSet.footer.includePageNumber,
+      ...furnitureLayout(ruleSet),
     });
   } finally {
     await browser.close();

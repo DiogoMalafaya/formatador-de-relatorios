@@ -306,7 +306,11 @@ function colourToHex(args: unknown[]): string {
   return "#other";
 }
 
-/** The footer may hold the candidate's name and/or a page label (arabic or roman), and nothing else. */
+/**
+ * The footer may hold the candidate's name and/or a page label, and nothing
+ * else. In either order: a mirrored footer (DIO-55) puts the number on the
+ * outer edge, which is the left on a verso, so it reads number-first there.
+ */
 function footerMatches(text: string, candidateName: string, ruleSet: RuleSet): boolean {
   const name = normalizeForMatch(candidateName);
   // One arabic sequence from the cover (DIO-51): a roman label is a regression.
@@ -315,7 +319,10 @@ function footerMatches(text: string, candidateName: string, ruleSet: RuleSet): b
   if (ruleSet.footer.includeCandidateName) parts.push(escapeRegExp(name));
   if (ruleSet.footer.includePageNumber) parts.push(label);
   if (parts.length === 0) return text.length === 0;
-  return new RegExp(`^${parts.join("\\s*[—–-]\\s*")}$`).test(normalizeForMatch(text));
+  const separator = "\\s*(?:[—–-]\\s*)?";
+  const orders = parts.length === 2 ? [parts, [parts[1], parts[0]]] : [parts];
+  const normalized = normalizeForMatch(text);
+  return orders.some((order) => new RegExp(`^${order.join(separator)}$`).test(normalized));
 }
 
 function normalizeSpaces(text: string): string {
