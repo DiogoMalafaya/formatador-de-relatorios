@@ -26,6 +26,15 @@ describe("golden corpus (DIO-47)", () => {
       assert.ok(result.report.totalPages > 8, "a realistic, multi-page CV");
       assert.equal(result.report.passes, 2, "converges in two passes");
 
+      // The corpus types numbers inconsistently ("3 -", "IV.", a "1.1." that
+      // restarts); one scheme comes out (DIO-53).
+      const chapters = (prepared.merge?.headings ?? []).filter((h) => h.numbering === "arabic" && h.tier === 1);
+      assert.deepEqual(chapters.map((h) => h.number), ["1.", "2.", "3.", "4.", "5.", "6.", "7."]);
+      assert.ok(
+        (prepared.merge?.headings ?? []).every((h) => !/^(\d|[IVX]+[.\s])/.test(h.text)),
+        "no typed number survives in a heading",
+      );
+
       const violations = await checkPdfCompliance(result.pdf, {
         ruleSet: prepared.document.ruleSet,
         fontFamily: prepared.document.fontFamily,
