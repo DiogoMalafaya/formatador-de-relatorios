@@ -2,6 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import type { TextItem } from "pdfjs-dist/types/src/display/api.js";
 import { renderPaginatedPdf } from "./renderPaginated.ts";
 import { extractPageMap } from "./pageMap.ts";
 import { mergeDocuments } from "../merge/index.ts";
@@ -312,6 +313,79 @@ describe("renderPaginatedPdf — chapter dividers (DIO-54)", () => {
     assert.deepEqual(on.report.blankPages, []);
     for (const [i, chapter] of partHeadings(headings).entries()) {
       assert.equal(on.report.headingPages[chapter.id], on.report.dividerPages[i] + 1);
+    }
+  });
+});
+
+describe("renderPaginatedPdf — mirrored furniture for duplex printing (DIO-55)", () => {
+  /** Footer and header text items per page, with their horizontal centre. */
+  async function furniture(pdf: Buffer) {
+    const loading = getDocument({ data: new Uint8Array(pdf), verbosity: 0 });
+    const pdfjs = await loading.promise;
+    const pages: { width: number; footer: { str: string; mid: number }[]; header: { str: string; mid: number }[] }[] = [];
+    for (let n = 1; n <= pdfjs.numPages; n += 1) {
+      const page = await pdfjs.getPage(n);
+      const [, , width, height] = page.view;
+      const items = (await page.getTextContent()).items.filter(
+        (item): item is TextItem => "str" in item && item.str.trim() !== "",
+      );
+      const at = (item: TextItem) => ({
+        str: item.str.trim(),
+        mid: item.transform[4] + item.width / 2,
+      });
+      pages.push({
+        width,
+        footer: items.filter((item) => item.transform[5] < 50).map(at),
+        header: items.filter((item) => item.transform[5] > height - 50).map(at),
+      });
+    }
+    await loading.destroy();
+    return pages;
+  }
+
+  test("print (MFR): number and header on the outer edge, name inside — right after blanks and dividers too", async () => {
+    const { headings, merged } = await mergedFixture();
+    const mfr = formatParsedDocument(merged.document, { ruleSetId: "mfr" }, { extraWarnings: merged.warnings });
+    const { pdf, report } = await renderPaginatedPdf(mfr, { candidateName: "Ana Pereira", headings, chapterDividers: true });
+    assert.ok(report.blankPages.length > 0 && report.dividerPages.length > 0, "the fixture exercises blanks and dividers");
+
+    const pages = await furniture(pdf);
+    let checked = 0;
+    for (const [i, page] of pages.entries()) {
+      const pageNumber = i + 1;
+      const label = report.pageLabels[i];
+      if (label === null) {
+        assert.deepEqual(page.footer, [], `page ${pageNumber}: the cover and blanks carry nothing`);
+        continue;
+      }
+      const recto = pageNumber % 2 === 1;
+      const outer = (mid: number) => (recto ? mid > page.width / 2 : mid < page.width / 2);
+      const number = page.footer.find((item) => item.str === label);
+      const name = page.footer.find((item) => item.str === "Ana Pereira");
+      assert.ok(number && name, `page ${pageNumber}: name and number`);
+      assert.ok(outer(number.mid), `page ${pageNumber} (${recto ? "recto" : "verso"}): number on the outer edge`);
+      assert.ok(!outer(name.mid), `page ${pageNumber}: name on the inner side`);
+      for (const header of page.header) assert.ok(outer(header.mid), `page ${pageNumber}: header on the outer edge`);
+      checked += 1;
+    }
+    assert.ok(checked > 4);
+
+    // MFR's footer is "name + number, nothing else": still compliant, and no rule drawn.
+    const violations = await checkPdfCompliance(new Uint8Array(pdf), {
+      ruleSet: mfr.ruleSet,
+      fontFamily: mfr.fontFamily,
+      candidateName: "Ana Pereira",
+      skip: ["cover-fields"],
+    });
+    assert.deepEqual(violations.filter((v) => v.check === "footer-content"), []);
+  });
+
+  test("PDF delivery (Pediatria): furniture stays centred", async () => {
+    const { headings, merged } = await mergedFixture();
+    const pediatria = formatParsedDocument(merged.document, { ruleSetId: "pediatria" }, { extraWarnings: merged.warnings });
+    const { pdf } = await renderPaginatedPdf(pediatria, { candidateName: "Ana Pereira", headings });
+    for (const page of (await furniture(pdf)).slice(1)) {
+      for (const item of page.footer) assert.ok(Math.abs(item.mid - page.width / 2) < 2, "centred footer");
     }
   });
 });

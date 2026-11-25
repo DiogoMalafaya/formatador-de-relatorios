@@ -53,7 +53,7 @@ import { imageLowResolutionWarning, withSourceFilename } from "../formatting/war
 import { pageLimitExceededWarning, summaryTooLongWarning } from "../formatting/warnings.ts";
 import { printMargins } from "../formatting/ruleSet.ts";
 import { serveEmbeddedFonts } from "./fonts.ts";
-import { stampPages } from "./stamp.ts";
+import { furnitureLayout, stampPages } from "./stamp.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 
@@ -247,6 +247,7 @@ export async function renderPaginatedPdf(
     fontFamily: document.fontFamily,
     includeCandidateName: ruleSet.footer.includeCandidateName,
     includePageNumber: ruleSet.footer.includePageNumber,
+    ...furnitureLayout(ruleSet),
   });
 
   const warnings: FormattingWarning[] = [];
