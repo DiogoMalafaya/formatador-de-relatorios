@@ -23,7 +23,8 @@ import { extractPageMap } from "./pageMap.ts";
 import {
   buildPageLabels,
   buildRunningHeaders,
-  partHeadingLevel,
+  chapterDividerPageCost,
+  partHeadings,
   planPagination,
   sectionSpan,
 } from "./paginate.ts";
@@ -35,6 +36,9 @@ import {
   TOC_START_MARKER_ID,
   buildBlankPageHtml,
   buildBodyStartMarker,
+  buildChapterDividerCss,
+  buildChapterDividerHtml,
+  chapterDividerId,
   buildTocStartMarker,
   buildHtmlDocument,
   buildPageMapProbeHtml,
@@ -67,6 +71,11 @@ export interface PaginatedRenderOptions {
   rectoHeadingIds?: readonly string[];
   /** Kept images below print resolution: warned about with the page they print on (DIO-49). */
   lowResolutionImages?: readonly (LowResolutionImage & { sourceFilename: string })[];
+  /**
+   * A divider page before every chapter, on a recto (DIO-54, PRD US7). Off
+   * unless the student turns it on. Costs exactly `chapterDividerPageCost`.
+   */
+  chapterDividers?: boolean;
 }
 
 /** What actually happened, for validations, tests and timing reports. Never contains document text. */
@@ -78,6 +87,10 @@ export interface PaginatedRenderReport {
   pageLabels: (string | null)[];
   /** 1-based absolute pages occupied by inserted blank filler pages (no marks, DIO-51). */
   blankPages: number[];
+  /** 1-based absolute pages of the chapter divider pages, when turned on (DIO-54). */
+  dividerPages: number[];
+  /** Pages the dividers add — or would add, when they are off (DIO-54). */
+  dividerPageCost: number;
   /** Final 1-based absolute page of each merged heading, by heading id. */
   headingPages: Record<string, number>;
   /** Final absolute page where the generated Índice starts, when there is one (DIO-45). */
@@ -106,7 +119,15 @@ export async function renderPaginatedPdf(
   const lowResolutionImages = options.lowResolutionImages ?? [];
   const { ruleSet } = document;
 
-  const baseHtml = injectTocStartMarker(injectBodyStartMarker(document.html, headings));
+  const dividerHeadings = options.chapterDividers ? partHeadings(headings) : [];
+  const baseHtml = injectChapterDividers(
+    injectTocStartMarker(injectBodyStartMarker(document.html, headings)),
+    dividerHeadings,
+  );
+  // Only dividers that actually made it into the HTML are anchors.
+  const dividerIds = dividerHeadings
+    .map((heading) => chapterDividerId(heading.id))
+    .filter((id) => baseHtml.includes(`id="${id}"`));
   // Front-matter pages that open on a recto: the página de rosto (DIO-50),
   // then the Índice (DIO-45).
   const frontRectoMarkers = [
@@ -114,12 +135,19 @@ export async function renderPaginatedPdf(
     ...(options.rectoHeadingIds ?? []),
     ...(baseHtml.includes(buildTocStartMarker()) ? [TOC_START_MARKER_ID] : []),
   ];
-  const css = [document.css, PAGINATION_CSS, PAGE_MAP_PROBE_CSS, buildPartBreakCss(headings)].join("\n");
+  const css = [
+    document.css,
+    PAGINATION_CSS,
+    PAGE_MAP_PROBE_CSS,
+    dividerIds.length > 0 ? buildChapterDividerCss(ruleSet.title.sizePt.default) : "",
+    buildPartBreakCss(headings, dividerIds.length > 0),
+  ].join("\n");
   // A recto heading (dedication) is both a marker and a heading: probe it once.
   const anchorIds = [
     ...new Set([
       ...frontRectoMarkers,
       BODY_START_MARKER_ID,
+      ...dividerIds,
       ...headings.map((h) => h.id),
       ...captions.map((caption) => caption.id),
       ...lowResolutionImages.map((image) => image.anchorId),
@@ -164,6 +192,7 @@ export async function renderPaginatedPdf(
         totalPages: map.contentPageCount,
         existingBlanks: new Set(blankCounts.keys()),
         frontRectoMarkers,
+        bodyRectoMarkers: dividerIds,
         // Recto starts and their blank fillers are for print; a PDF-delivered
         // profile (Pediatria) reads them as errors (DIO-51, PRD Q12).
         rectoStarts: ruleSet.page.delivery === "print",
@@ -193,11 +222,19 @@ export async function renderPaginatedPdf(
   const bodyStartPage = plan.bodyStartPage;
   const blankPages = resolveBlankPages(blankCounts, plan);
   const pageLabels = buildPageLabels(totalPages, new Set(blankPages));
+  const { markerPages } = plan;
+  const dividerPages = dividerIds
+    .map((id) => markerPages.get(id))
+    .filter((page): page is number => page !== undefined)
+    .sort((a, b) => a - b);
+  // A divider keeps its footer (it's a numbered page of the sequence) but
+  // never a running header: it *is* the chapter's title page.
+  const headerlessPages = new Set([...blankPages, ...dividerPages]);
   // The running header names a part, and part titles render uppercase
   // (GENERATED_TOC_CSS, DIO-45), so the header matches what the page shows
   // rather than whatever case the chapter file was typed in.
   const headers = ruleSet.header.allowed
-    ? buildRunningHeaders(headings, plan.headingPages, totalPages, bodyStartPage, new Set(blankPages)).map(
+    ? buildRunningHeaders(headings, plan.headingPages, totalPages, bodyStartPage, headerlessPages).map(
         (header) => header?.toLocaleUpperCase("pt-PT") ?? null,
       )
     : new Array<string | null>(totalPages).fill(null);
@@ -239,6 +276,8 @@ export async function renderPaginatedPdf(
       bodyStartPage,
       pageLabels,
       blankPages,
+      dividerPages,
+      dividerPageCost: chapterDividerPageCost(headings, ruleSet.page.delivery),
       headingPages: Object.fromEntries(plan.headingPages),
       ...(plan.markerPages.has(TOC_START_MARKER_ID)
         ? { tocStartPage: plan.markerPages.get(TOC_START_MARKER_ID) }
@@ -264,7 +303,7 @@ export function injectBodyStartMarker(html: string, headings: readonly MergedHea
 
   const firstArabic = headings.find((heading) => heading.numbering === "arabic");
   if (firstArabic) {
-    const headingIndex = html.search(headingOpenTagPattern(firstArabic.id));
+    const headingIndex = html.search(anchorOpenTagPattern(firstArabic.id));
     if (headingIndex !== -1) {
       return `${html.slice(0, headingIndex)}${marker}\n${html.slice(headingIndex)}`;
     }
@@ -296,20 +335,32 @@ const MARKER_HTML: Readonly<Record<string, string>> = {
   [ROSTO_START_MARKER_ID]: buildRostoStartMarker(),
 };
 
-/** Every level-1 body heading (major part) starts on a fresh page, like the reference volume. */
+/**
+ * Puts a divider page right before each chapter heading (DIO-54) — after the
+ * body-start marker, so the first divider is the body's opening page and the
+ * marker still carries the page break that opens it (invariant #3).
+ */
+export function injectChapterDividers(html: string, chapters: readonly MergedHeading[]): string {
+  let out = html;
+  for (const heading of chapters) {
+    const index = out.search(anchorOpenTagPattern(heading.id));
+    if (index === -1) continue;
+    out = `${out.slice(0, index)}${buildChapterDividerHtml(heading)}\n${out.slice(index)}`;
+  }
+  return out;
+}
+
 /**
  * Page breaks before every major part except the first: the body-start marker
  * already opens the body's page, so breaking on the first part too would
- * leave a page holding nothing but that 1px marker.
+ * leave a page holding nothing but that 1px marker. With dividers on, the
+ * break moves to each divider, and the divider's own break-after opens the
+ * chapter heading's page.
  */
-function buildPartBreakCss(headings: readonly MergedHeading[]): string {
-  const partLevel = partHeadingLevel(headings);
-  if (partLevel === undefined) return "";
-
-  const selectors = headings
-    .filter((heading) => heading.numbering === "arabic" && heading.level === partLevel)
+function buildPartBreakCss(headings: readonly MergedHeading[], dividers: boolean): string {
+  const selectors = partHeadings(headings)
     .slice(1)
-    .map((heading) => `#${heading.id}`);
+    .map((heading) => `#${dividers ? chapterDividerId(heading.id) : heading.id}`);
   if (selectors.length === 0) return "";
   return `${selectors.join(", ")} { break-before: page; page-break-before: always; }`;
 }
@@ -328,7 +379,7 @@ function composePassHtml(
     if (markerHtml) {
       html = html.replace(markerHtml, `${blanks}\n${markerHtml}`);
     } else {
-      const index = html.search(headingOpenTagPattern(anchor));
+      const index = html.search(anchorOpenTagPattern(anchor));
       if (index !== -1) {
         html = `${html.slice(0, index)}${blanks}\n${html.slice(index)}`;
       }
@@ -338,8 +389,9 @@ function composePassHtml(
   return `${html}\n${probeHtml}`;
 }
 
-function headingOpenTagPattern(headingId: string): RegExp {
-  return new RegExp(`<h[1-6] id="${headingId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`);
+/** The opening tag of a heading or a divider section, by id. */
+function anchorOpenTagPattern(anchorId: string): RegExp {
+  return new RegExp(`<(?:h[1-6]|section) id="${anchorId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`);
 }
 
 function mapsEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {

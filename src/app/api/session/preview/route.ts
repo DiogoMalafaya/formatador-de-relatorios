@@ -8,6 +8,7 @@ import {
   UPLOAD_REQUIRED_PT,
 } from "@/lib/errors/messages";
 import { needsSpecialtyReselection } from "@/lib/specialties";
+import { renderInputsKey } from "@/lib/rendering/pageBudget";
 
 /**
  * Streams the watermarked preview (DIO-13) for the current session,
@@ -63,6 +64,11 @@ export async function GET() {
       previewStorageKey: rendered.storageKey,
       renderWarnings: rendered.renderWarnings ?? [],
       renderedPageCount: rendered.pageCount,
+      // What the page budget needs to keep counting after a divider toggle,
+      // and to know when this count no longer applies (DIO-54).
+      renderedWithDividers: session.chapterDividers === true,
+      dividerPageCost: rendered.dividerPageCost,
+      renderInputsKey: renderInputsKey(session),
     },
   });
 

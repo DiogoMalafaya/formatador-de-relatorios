@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   buildPageLabels,
   buildRunningHeaders,
+  chapterDividerPageCost,
+  partHeadings,
   planPagination,
   sectionSpan,
 } from "./paginate.ts";
@@ -315,6 +317,63 @@ describe("planPagination", () => {
       assert.deepEqual([...second.tocPageNumbers], [...first.tocPageNumbers]);
       assert.equal(second.stable, true, "the second pass must converge");
     });
+  });
+});
+
+describe("chapter dividers (DIO-54)", () => {
+  const headings = [
+    frontHeading("indice"),
+    bodyHeading("parte-1", 2),
+    bodyHeading("seccao-1-1", 3),
+    bodyHeading("parte-2", 2),
+  ];
+
+  test("one divider per major part, at the shallowest body level", () => {
+    assert.deepEqual(partHeadings(headings).map((h) => h.id), ["parte-1", "parte-2"]);
+  });
+
+  test("cost: a recto plus its blank verso in print, one page as a PDF", () => {
+    assert.equal(chapterDividerPageCost(headings, "print"), 4);
+    assert.equal(chapterDividerPageCost(headings, "pdf"), 2);
+    assert.equal(chapterDividerPageCost([frontHeading("indice")], "print"), 0);
+  });
+
+  test("divider and chapter each open on a recto, and the plan is a fixed point", () => {
+    // Blank-free geometry: divider 1 opens the body on 3 (with the marker),
+    // parte-1 on 4, divider 2 on 6, parte-2 on 7.
+    const pages = new Map([
+      [BODY_START_MARKER_ID, 3],
+      ["divider-1", 3],
+      ["parte-1", 4],
+      ["seccao-1-1", 5],
+      ["divider-2", 6],
+      ["parte-2", 7],
+    ]);
+    const input = { headings, pages, totalPages: 8, bodyRectoMarkers: ["divider-1", "divider-2"] };
+    const plan = planPagination(input);
+
+    // divider-1 shares the marker's page, so the marker's anchor stands for
+    // it. Each chapter heading needs the blank verso behind its divider; the
+    // first one's shift puts divider-2 on a recto by itself.
+    assert.deepEqual(plan.blankAnchors, ["parte-1", "parte-2"]);
+    assert.equal(plan.markerPages.get("divider-1"), 3);
+    assert.equal(plan.headingPages.get("parte-1"), 5);
+    assert.equal(plan.markerPages.get("divider-2"), 7);
+    assert.equal(plan.headingPages.get("parte-2"), 9);
+    assert.equal(plan.totalPages, 10);
+
+    // Feed the plan back the way pass 2 sees it: blanks in place, pages shifted.
+    const shifted = new Map([
+      [BODY_START_MARKER_ID, 3],
+      ["divider-1", 3],
+      ["parte-1", 5],
+      ["seccao-1-1", 6],
+      ["divider-2", 7],
+      ["parte-2", 9],
+    ]);
+    const again = planPagination({ ...input, pages: shifted, totalPages: 10, existingBlanks: new Set(plan.blankAnchors) });
+    assert.equal(again.stable, true);
+    assert.deepEqual(again.blankAnchors, plan.blankAnchors);
   });
 });
 

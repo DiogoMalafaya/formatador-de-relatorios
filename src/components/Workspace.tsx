@@ -2,13 +2,14 @@
 
 import { formatLocalDeFormacao } from "@/lib/covers/details";
 import type { CoverDetails } from "@/lib/covers/details";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { getSpecialtyById } from "@/lib/specialties";
 import CheckoutButton from "./CheckoutButton";
 import CoverSelect from "./CoverSelect";
 import DownloadPanel from "./DownloadPanel";
 import FormattingSummary from "./FormattingSummary";
 import FormattingWarnings from "./FormattingWarnings";
+import PageBudget from "./PageBudget";
 import PreviewPane from "./PreviewPane";
 import styles from "./Workspace.module.css";
 
@@ -64,6 +65,13 @@ export default function Workspace({
 }: WorkspaceProps) {
   // Mobile-only accordion state; on desktop the CSS shows the rail regardless.
   const [railOpen, setRailOpen] = useState(false);
+  // Page budget (DIO-54): refetched after every preview render; a divider
+  // toggle discards the now-stale preview the way a cover change does.
+  const [renderCount, setRenderCount] = useState(0);
+  const [layoutVersion, setLayoutVersion] = useState(0);
+  const [blockedMessagePt, setBlockedMessagePt] = useState<string | null>(null);
+  const onRendered = useCallback(() => setRenderCount((count) => count + 1), []);
+  const onDividersChanged = useCallback(() => setLayoutVersion((version) => version + 1), []);
 
   const specialtyName = getSpecialtyById(specialtyId)?.name ?? specialtyId;
 
@@ -80,7 +88,10 @@ export default function Workspace({
               </p>
             </div>
             <div className={styles.previewSlot}>
-              <PreviewPane key={`${coverId}|${JSON.stringify(coverDetails ?? {})}`} />
+              <PreviewPane
+                key={`${coverId}|${JSON.stringify(coverDetails ?? {})}|${layoutVersion}`}
+                onRendered={onRendered}
+              />
             </div>
           </div>
         </div>
@@ -135,6 +146,14 @@ export default function Workspace({
               </section>
 
               <section className={styles.railSection}>
+                <PageBudget
+                  refreshKey={renderCount}
+                  onDividersChanged={onDividersChanged}
+                  onBlockedChange={setBlockedMessagePt}
+                />
+              </section>
+
+              <section className={styles.railSection}>
                 <CoverSelect initialCoverId={coverId || undefined} onSaved={onCoverSaved} />
               </section>
 
@@ -152,7 +171,7 @@ export default function Workspace({
               <DownloadPanel />
             ) : (
               <>
-                <CheckoutButton priceLabelPt={priceLabelPt} />
+                <CheckoutButton priceLabelPt={priceLabelPt} blockedMessagePt={blockedMessagePt} />
                 <p className={styles.actionNote}>
                   Pagas uma única vez — sem conta, sem subscrição.
                 </p>

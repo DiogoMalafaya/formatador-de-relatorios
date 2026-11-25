@@ -11,6 +11,8 @@ import { HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
 import { buildDocx, heading, longParagraphs, paragraph } from "../formatting/testFixtures.ts";
 import type { MergeSource } from "../merge/types.ts";
 import { buildMasterWithListsAfterTocFixture } from "../merge/testFixtures.ts";
+import { checkPdfCompliance } from "../compliance/checkPdf.ts";
+import { partHeadings } from "./paginate.ts";
 
 /**
  * End-to-end two-pass render (DIO-42). Like `render.test.mts` these launch a
@@ -238,6 +240,79 @@ describe("renderPaginatedPdf — front matter after the Índice (DIO-45)", () =>
     }
     assert.equal(new Set(parts.map(page)).size, parts.length, "no two chapters share a page");
     assert.equal(report.passes, 2, "still converges in two passes");
+  });
+});
+
+describe("renderPaginatedPdf — chapter dividers (DIO-54)", () => {
+  async function pageTexts(pdf: Buffer): Promise<string[]> {
+    const loading = getDocument({ data: new Uint8Array(pdf), verbosity: 0 });
+    const pdfjs = await loading.promise;
+    const texts: string[] = [];
+    for (let page = 1; page <= pdfjs.numPages; page += 1) {
+      const content = await (await pdfjs.getPage(page)).getTextContent();
+      texts.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+    }
+    await loading.destroy();
+    return texts;
+  }
+
+  test("print delivery: each chapter gets a recto divider and a blank verso, costing exactly what was announced", async () => {
+    const { headings, merged } = await mergedFixture();
+    const mfr = formatParsedDocument(merged.document, { ruleSetId: "mfr" }, { extraWarnings: merged.warnings });
+    const chapters = partHeadings(headings);
+    assert.equal(chapters.length, 2, "the fixture has two chapters");
+
+    const off = await renderPaginatedPdf(mfr, { candidateName: "Ana Pereira", headings });
+    const on = await renderPaginatedPdf(mfr, { candidateName: "Ana Pereira", headings, chapterDividers: true });
+
+    assert.deepEqual(off.report.dividerPages, []);
+    assert.equal(off.report.dividerPageCost, 4, "two pages per chapter in print");
+    assert.equal(on.report.dividerPageCost, off.report.dividerPageCost);
+    assert.equal(on.report.totalPages, off.report.totalPages + on.report.dividerPageCost, "the announced cost is exact");
+    assert.equal(on.report.passes, 2, "the blank plan stays a fixed point with dividers on");
+
+    assert.equal(on.report.dividerPages.length, chapters.length);
+    assert.equal(on.report.dividerPages[0], on.report.bodyStartPage, "the first divider opens the body");
+    const blanks = new Set(on.report.blankPages);
+    const texts = await pageTexts(on.pdf);
+    for (const [i, chapter] of chapters.entries()) {
+      const divider = on.report.dividerPages[i];
+      assert.equal(divider % 2, 1, `${chapter.text}: divider on a recto`);
+      assert.ok(blanks.has(divider + 1), `${chapter.text}: the divider's verso is a truly blank filler`);
+      assert.equal(on.report.headingPages[chapter.id], divider + 2, `${chapter.text}: the chapter opens on the next recto`);
+      // Number + title, nothing else but the footer; no running header.
+      assert.match(texts[divider - 1], new RegExp(chapter.text, "iu"));
+      assert.match(texts[divider - 1], new RegExp(`\\b${i + 1}\\b`));
+      assert.equal(on.report.headers[divider - 1], null, "no running header on a divider");
+      assert.equal(on.report.pageLabels[divider - 1], String(divider), "a divider counts and shows its number");
+    }
+    for (const blank of on.report.blankPages) {
+      assert.equal(texts[blank - 1].trim(), "", `blank page ${blank} stays truly blank`);
+    }
+
+    // White, typographic, within the title sizes: MFR's rules hold.
+    const violations = await checkPdfCompliance(new Uint8Array(on.pdf), {
+      ruleSet: mfr.ruleSet,
+      fontFamily: mfr.fontFamily,
+      candidateName: "Ana Pereira",
+      skip: ["cover-fields"],
+    });
+    assert.deepEqual(violations.filter((v) => v.page !== undefined && on.report.dividerPages.includes(v.page)), []);
+  });
+
+  test("PDF delivery (Pediatria): one page per chapter and still no blank fillers", async () => {
+    const { headings, merged } = await mergedFixture();
+    const pediatria = formatParsedDocument(merged.document, { ruleSetId: "pediatria" }, { extraWarnings: merged.warnings });
+
+    const off = await renderPaginatedPdf(pediatria, { candidateName: "Ana Pereira", headings });
+    const on = await renderPaginatedPdf(pediatria, { candidateName: "Ana Pereira", headings, chapterDividers: true });
+
+    assert.equal(on.report.dividerPageCost, 2);
+    assert.equal(on.report.totalPages, off.report.totalPages + 2);
+    assert.deepEqual(on.report.blankPages, []);
+    for (const [i, chapter] of partHeadings(headings).entries()) {
+      assert.equal(on.report.headingPages[chapter.id], on.report.dividerPages[i] + 1);
+    }
   });
 });
 

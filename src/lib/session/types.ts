@@ -59,6 +59,16 @@ export interface RenderedArtifacts {
   renderWarnings?: { code: string; messagePt: string; sourceFilename?: string }[];
   /** Exact page count of the last paginated render (DIO-42). */
   renderedPageCount?: number;
+  /** Whether that render had chapter dividers on (DIO-54), so the page budget can adjust for a toggle since. */
+  renderedWithDividers?: boolean;
+  /** Pages chapter dividers add to that render's document (DIO-54). */
+  dividerPageCost?: number;
+  /**
+   * `renderInputsKey` of the session when that render ran (DIO-54): the
+   * page count only counts while the inputs still match. A hash, never the
+   * inputs themselves.
+   */
+  renderInputsKey?: string;
 }
 
 export interface SessionRecord {
@@ -105,6 +115,11 @@ export interface SessionRecord {
    * cover presence), never trust this number for anything.
    */
   setupStep?: number;
+  /**
+   * A divider page before every chapter (DIO-54, PRD US7). Off unless the
+   * student turns it on in the workspace.
+   */
+  chapterDividers?: boolean;
 
   payment: {
     status: PaymentStatus;

@@ -27,7 +27,12 @@ type Status =
   | { kind: "error"; message: string }
   | { kind: "ready"; data: ArrayBuffer };
 
-export default function PreviewPane() {
+interface PreviewPaneProps {
+  /** A preview finished rendering: its exact page count is now on the session (DIO-54). */
+  onRendered?: () => void;
+}
+
+export default function PreviewPane({ onRendered }: PreviewPaneProps = {}) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   async function loadPreview() {
@@ -48,6 +53,7 @@ export default function PreviewPane() {
 
       const data = await response.arrayBuffer();
       setStatus({ kind: "ready", data });
+      onRendered?.();
     } catch {
       setStatus({
         kind: "error",
