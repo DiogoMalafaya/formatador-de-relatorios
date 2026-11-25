@@ -15,12 +15,24 @@ export interface RenderedCorpusCase {
   result: PaginatedRenderResult;
 }
 
-export async function renderCorpusCase(corpusCase: CorpusCase, coverId = "classica"): Promise<RenderedCorpusCase> {
+export interface CorpusRenderOptions {
+  /** House theme (DIO-56); the default theme when unset. */
+  themeId?: string;
+  /** Chapter divider pages (DIO-54). */
+  chapterDividers?: boolean;
+}
+
+export async function renderCorpusCase(
+  corpusCase: CorpusCase,
+  coverId = "classica",
+  options: CorpusRenderOptions = {},
+): Promise<RenderedCorpusCase> {
   const prepared = assembleMultiFileDocument({
     sources: corpusCase.sources,
     masterPosition: corpusCase.masterPosition,
     ruleSetId: corpusCase.ruleSetId,
     coverId,
+    ...(options.themeId ? { themeId: options.themeId } : {}),
     dateLabel: corpusCase.dateLabel,
     coverDetails: corpusCase.coverDetails,
     specialtyNamePt: corpusCase.specialtyNamePt,
@@ -34,6 +46,7 @@ export async function renderCorpusCase(corpusCase: CorpusCase, coverId = "classi
     figureCaptions: prepared.merge.figureCaptions,
     lowResolutionImages: prepared.merge.lowResolutionImages,
     rectoHeadingIds: prepared.merge.rectoHeadingIds,
+    ...(options.chapterDividers ? { chapterDividers: true } : {}),
   });
   return { prepared, result };
 }

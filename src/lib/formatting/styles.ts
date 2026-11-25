@@ -13,6 +13,8 @@ import { fontFaceCss, fontStack as embeddedFontStack } from "../pdf/fonts.ts";
 import { IMAGE_CSS } from "./images.ts";
 import { FIGURE_CAPTION_CSS } from "./figures.ts";
 import { BODY_TYPOGRAPHY_CSS } from "./typography.ts";
+import { constrain, resolveTheme } from "../themes/index.ts";
+import type { EffectiveTheme } from "../themes/index.ts";
 
 export interface RuleSetChoices {
   fontFamily: FontFamily;
@@ -35,13 +37,19 @@ export function resolveChoices(
   return { fontFamily, titleSizePt };
 }
 
-export function buildRuleSetCss(ruleSet: RuleSet, choices: RuleSetChoices): string {
+export function buildRuleSetCss(
+  ruleSet: RuleSet,
+  choices: RuleSetChoices,
+  theme: EffectiveTheme = constrain(resolveTheme(undefined), ruleSet, { fontFamily: choices.fontFamily }),
+): string {
   // The norm's font, embedded from files we ship (DIO-46): serverless
   // Chromium has none of Arial, Times New Roman or Verdana installed.
   const fontStack = embeddedFontStack(choices.fontFamily);
+  // The cover's display face (DIO-56), when the profile lets it differ.
+  const displayFaces = theme.displayFamily !== choices.fontFamily ? `\n${fontFaceCss(theme.displayFamily)}` : "";
 
   return `
-${fontFaceCss(choices.fontFamily)}
+${fontFaceCss(choices.fontFamily)}${displayFaces}
 
 @page {
   size: A4;
@@ -72,7 +80,8 @@ h3 {
   font-size: ${ruleSet.font.sizePt}pt;
 }
 
-${buildTableCss(ruleSet)}
+${buildThemeAccentCss(theme)}
+${buildTableCss(ruleSet, theme)}
 ${IMAGE_CSS}
 ${FIGURE_CAPTION_CSS}
 `.trim();
@@ -89,11 +98,14 @@ ${FIGURE_CAPTION_CSS}
  * element, and only where the profile is silent on typography — the
  * compliance checker holds explicit profiles to their stated size.
  */
-export function buildTableCss(ruleSet: RuleSet): string {
-  const colourAllowed = ruleSet.silentOn.includes("colour");
+export function buildTableCss(
+  ruleSet: RuleSet,
+  theme: EffectiveTheme = constrain(resolveTheme(undefined), ruleSet),
+): string {
+  const colourAllowed = theme.mode === "expressive";
   const typographyFree = ruleSet.silentOn.includes("typography");
-  const headerFill = colourAllowed ? TABLE_TOKENS.accent : TABLE_TOKENS.strictHeaderFill;
-  const headerText = colourAllowed ? TABLE_TOKENS.accentText : ruleSet.font.color;
+  const headerFill = colourAllowed ? theme.accent : TABLE_TOKENS.strictHeaderFill;
+  const headerText = colourAllowed ? theme.onAccent : ruleSet.font.color;
 
   return `
 table {
@@ -143,13 +155,23 @@ table.table-keep { break-inside: avoid; page-break-inside: avoid; }
 }
 
 /**
- * Provisional table tokens until the house themes land (DIO-56, PRD Q4: a
- * designer may tune them). The accent is one restrained dark blue, the only
- * colour the house standard uses.
+ * The theme's accent on headings and caption labels (DIO-56, PRD §6.2:
+ * "Headings … may use one accent colour"). Nothing in strict mode: body
+ * text and headings stay the profile's black.
+ */
+export function buildThemeAccentCss(theme: EffectiveTheme): string {
+  if (theme.mode === "strict") return "";
+  return `
+h1, h2 { color: ${theme.accent}; }
+.table-caption-label, .figure-caption-label { color: ${theme.accent}; }
+`.trim();
+}
+
+/**
+ * Table tokens other than colour, which comes from the theme (DIO-56). The
+ * strict header fill is the one grey a profile that states colour rules gets.
  */
 export const TABLE_TOKENS = {
-  accent: "#1f3a5f",
-  accentText: "#ffffff",
   /** Word's "Branco, Fundo 1, Mais Escuro 15%" — the grey the Oftalmologia template uses. */
   strictHeaderFill: "#d9d9d9",
   headerRule: "#808080",

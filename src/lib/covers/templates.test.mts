@@ -1,10 +1,23 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { COVER_TEMPLATES } from "./templates.ts";
+import { COVER_TEMPLATES, STRICT_COVER_TOKENS } from "./templates.ts";
 
 describe("COVER_TEMPLATES", () => {
-  test("ships at least the launch set of three covers", () => {
-    assert.ok(COVER_TEMPLATES.length >= 3);
+  test("ships at least six layouts, so each mode has at least three (DIO-56)", () => {
+    assert.ok(COVER_TEMPLATES.length >= 6);
+  });
+
+  test("the DIO-12 ids stay valid, so stored sessions keep their cover", () => {
+    const ids = COVER_TEMPLATES.map((template) => template.id);
+    for (const id of ["classica", "moderna", "formal"]) assert.ok(ids.includes(id), id);
+  });
+
+  test("every layout's CSS is scoped under its own class", () => {
+    for (const template of COVER_TEMPLATES) {
+      const selectors = template.css(STRICT_COVER_TOKENS).match(/^\.[^{]+\{/gm) ?? [];
+      assert.ok(selectors.length > 0, template.id);
+      for (const selector of selectors) assert.ok(selector.startsWith(`.cover-${template.id}`), `${template.id}: ${selector}`);
+    }
   });
 
   test("every template has a unique id", () => {

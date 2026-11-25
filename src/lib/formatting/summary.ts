@@ -7,7 +7,7 @@
  * (new Colégio, adjusted parameter) changes the copy with no code change.
  */
 
-import type { RuleSet } from "./ruleSet.ts";
+import type { FontFamily, RuleSet } from "./ruleSet.ts";
 
 /** pt-PT uses a comma for the decimal separator ("2,5cm", not "2.5cm"). */
 function formatPtNumber(value: number): string {
@@ -25,9 +25,10 @@ function formatMarginsPt(margins: RuleSet["margins"]): string {
   return [topCm, rightCm, bottomCm, leftCm].map((cm) => `${formatPtNumber(cm)}cm`).join(" ");
 }
 
-export function formatFormattingSummaryPt(ruleSet: RuleSet): string {
+/** `fontFamily` is the face actually used: the theme's, where the profile leaves the font free (DIO-56). */
+export function formatFormattingSummaryPt(ruleSet: RuleSet, fontFamily: FontFamily = ruleSet.font.family.default): string {
   const parts = [
-    `Fonte: ${ruleSet.font.family.default} ${formatPtNumber(ruleSet.font.sizePt)}pt`,
+    `Fonte: ${fontFamily} ${formatPtNumber(ruleSet.font.sizePt)}pt`,
     `Margens: ${formatMarginsPt(ruleSet.margins)}`,
     `Espaçamento: ${formatPtNumber(ruleSet.lineSpacing)}`,
   ];

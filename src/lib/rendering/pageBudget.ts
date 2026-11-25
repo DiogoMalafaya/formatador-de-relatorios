@@ -9,7 +9,7 @@
  *
  * A count is only used while the render it came from still matches the
  * session's inputs (`renderInputsKey`). Anything else — a file added, the
- * specialty or the cover changed — makes it unknown until the next preview,
+ * specialty, the cover or the theme changed — makes it unknown until the next preview,
  * never silently stale. A budget over the profile's cap blocks checkout.
  */
 
@@ -29,6 +29,9 @@ export function renderInputsKey(session: SessionRecord): string {
     specialtyId: session.specialtyId ?? null,
     coverId: session.coverId ?? null,
     coverDetails: session.coverDetails ?? null,
+    // A theme can change the body face, so the page count (DIO-56). Only
+    // when set, so a session from before themes keeps its fingerprint.
+    ...(session.themeId ? { themeId: session.themeId } : {}),
   };
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
 }

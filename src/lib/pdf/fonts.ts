@@ -26,6 +26,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "puppeteer-core";
 import type { FontFamily } from "../formatting/ruleSet.ts";
+import { EMBEDDED_FONTS, FONT_ORIGIN } from "./fontFamilies.ts";
+
+export { EMBEDDED_FONTS, fontFaceCss, fontStack } from "./fontFamilies.ts";
+export type { EmbeddedFamily, Face } from "./fontFamilies.ts";
 
 /**
  * Where the font files live at runtime. `process.cwd()` is the project root
@@ -33,78 +37,6 @@ import type { FontFamily } from "../formatting/ruleSet.ts";
  * ships the files because `next.config.ts` traces them into the PDF routes.
  */
 const FONT_DIR = join(process.cwd(), "src", "lib", "pdf", "fonts");
-
-/** Never resolves: requests to it are answered by `serveEmbeddedFonts` or not at all. */
-const FONT_ORIGIN = "https://lauda-fonts.invalid/";
-
-interface Face {
-  file: string;
-  /** CSS font-weight descriptor; a range for variable fonts. */
-  weight: string;
-  style: "normal" | "italic";
-}
-
-interface EmbeddedFamily {
-  /** The CSS family name we register — also the name the PDF will report. */
-  cssFamily: string;
-  generic: "serif" | "sans-serif";
-  faces: readonly Face[];
-  /** Regular face, embedded by pdf-lib for stamped footers/headers. */
-  regularFile: string;
-}
-
-export const EMBEDDED_FONTS: Readonly<Record<FontFamily, EmbeddedFamily>> = {
-  Arial: {
-    cssFamily: "Arimo",
-    generic: "sans-serif",
-    faces: [
-      { file: "Arimo-VariableWght.ttf", weight: "400 700", style: "normal" },
-      { file: "Arimo-Italic-VariableWght.ttf", weight: "400 700", style: "italic" },
-    ],
-    regularFile: "Arimo-VariableWght.ttf",
-  },
-  "Times New Roman": {
-    cssFamily: "Tinos",
-    generic: "serif",
-    faces: [
-      { file: "Tinos-Regular.ttf", weight: "400", style: "normal" },
-      { file: "Tinos-Bold.ttf", weight: "700", style: "normal" },
-      { file: "Tinos-Italic.ttf", weight: "400", style: "italic" },
-      { file: "Tinos-BoldItalic.ttf", weight: "700", style: "italic" },
-    ],
-    regularFile: "Tinos-Regular.ttf",
-  },
-  Verdana: {
-    cssFamily: "DejaVu LGC Sans",
-    generic: "sans-serif",
-    faces: [
-      { file: "DejaVuLGCSans.ttf", weight: "400", style: "normal" },
-      { file: "DejaVuLGCSans-Bold.ttf", weight: "700", style: "normal" },
-      { file: "DejaVuLGCSans-Oblique.ttf", weight: "400", style: "italic" },
-      { file: "DejaVuLGCSans-BoldOblique.ttf", weight: "700", style: "italic" },
-    ],
-    regularFile: "DejaVuLGCSans.ttf",
-  },
-};
-
-/** The CSS `font-family` value for a norm's font: our embedded face, then a generic fallback. */
-export function fontStack(family: FontFamily): string {
-  const embedded = EMBEDDED_FONTS[family];
-  return `"${embedded.cssFamily}", ${embedded.generic}`;
-}
-
-/** `@font-face` rules for one norm font. Only faces the page uses get fetched. */
-export function fontFaceCss(family: FontFamily): string {
-  const embedded = EMBEDDED_FONTS[family];
-  return embedded.faces
-    .map(
-      (face) =>
-        `@font-face { font-family: "${embedded.cssFamily}"; ` +
-        `src: url("${FONT_ORIGIN}${face.file}") format("truetype"); ` +
-        `font-weight: ${face.weight}; font-style: ${face.style}; font-display: block; }`,
-    )
-    .join("\n");
-}
 
 const fileCache = new Map<string, Buffer>();
 

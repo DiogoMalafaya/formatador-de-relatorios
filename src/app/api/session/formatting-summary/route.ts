@@ -2,6 +2,7 @@ import { getCurrentSession } from "@/lib/session/cookies";
 import { resolveRuleSetId } from "@/lib/specialties";
 import { getRuleSet } from "@/lib/formatting/ruleSet";
 import { formatFormattingSummaryPt } from "@/lib/formatting/summary";
+import { constrain, resolveTheme } from "@/lib/themes";
 
 /**
  * Formatting summary for the current session (DIO-17): the norm profile
@@ -25,7 +26,7 @@ export async function GET() {
 
   return Response.json({
     ok: true,
-    summaryPt: formatFormattingSummaryPt(ruleSet),
+    summaryPt: formatFormattingSummaryPt(ruleSet, constrain(resolveTheme(session.themeId), ruleSet).bodyFamily),
     provenancePt: ruleSet.provenancePt,
     sources: ruleSet.sources.map((source) => ({ titlePt: source.titlePt, url: source.url })),
   });

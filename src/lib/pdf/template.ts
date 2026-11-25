@@ -7,6 +7,8 @@
 
 import type { FormattedDocument } from "../formatting/apply.ts";
 import { escapeHtml } from "../html.ts";
+import { fontStack } from "./fontFamilies.ts";
+import type { EffectiveTheme } from "../themes/index.ts";
 
 /** Wraps the parsed document + rule-set CSS into a full page Chromium can load. */
 export function buildHtmlDocument(document: FormattedDocument): string {
@@ -130,7 +132,7 @@ export function chapterDividerId(headingId: string): string {
  * One divider page: the chapter's number and title, alone on a page, placed
  * right before the chapter heading. Typographic only — no rule, no colour —
  * so it's compliant under a profile that forbids graphics or colour (MFR).
- * The house theme's accent-filled verso belongs to the themes (DIO-56).
+ * The house theme styles it where the profile allows (DIO-56).
  */
 export function buildChapterDividerHtml(heading: { id: string; text: string; number?: string }): string {
   const number = heading.number?.replace(/\.$/, "");
@@ -139,16 +141,21 @@ export function buildChapterDividerHtml(heading: { id: string; text: string; num
 }
 
 /**
- * Divider page CSS. Text stays at the profile's title size: the compliance
- * checker holds explicit profiles to their stated sizes (MFR: titles 12 or
- * 14 pt), so a large display numeral would be a violation there. Bigger,
- * theme-styled dividers come with the house themes (DIO-56).
+ * Divider page CSS. Where the profile states typography (MFR, Pediatria),
+ * text stays at its title size: the compliance checker holds explicit
+ * profiles to their stated sizes, so a large display numeral would be a
+ * violation there. Where typography is free, the house theme (DIO-56) sets
+ * a large numeral in the display face over a short accent rule. Colour
+ * comes from the effective theme: black in strict mode.
  *
  * The divider breaks *after* itself, so the chapter heading opens the next
  * page; the break *before* each divider but the first is added per id (see
  * `buildPartBreakCss`), for the same reason the first part heading gets none.
  */
-export function buildChapterDividerCss(titleSizePt: number): string {
+export function buildChapterDividerCss(titleSizePt: number, theme?: EffectiveTheme): string {
+  const accent = theme?.mode === "expressive" ? theme.accent : "#000";
+  const free = theme?.freeTypeScale === true;
+  const displayFont = free && theme ? fontStack(theme.displayFamily) : "inherit";
   return `
 .chapter-divider {
   break-after: page;
@@ -166,15 +173,29 @@ export function buildChapterDividerCss(titleSizePt: number): string {
 .chapter-divider p { margin: 0; text-align: center; text-indent: 0; hyphens: manual; }
 .chapter-divider .chapter-divider-number {
   font-weight: bold;
-  font-size: ${titleSizePt}pt;
+  font-size: ${free ? 54 : titleSizePt}pt;
   font-variant-numeric: tabular-nums;
   margin-bottom: 0.6em;
-}
+  color: ${accent};
+${free ? `  font-family: ${displayFont};
+  font-weight: ${theme?.displayItalic ? "normal" : "bold"};
+  font-style: ${theme?.displayItalic ? "italic" : "normal"};
+  line-height: 1;
+  margin-bottom: 0.35em;
+` : ""}}
 .chapter-divider .chapter-divider-title {
   font-weight: bold;
-  font-size: ${titleSizePt}pt;
+  font-size: ${free ? Math.max(titleSizePt, 16) : titleSizePt}pt;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: ${free ? "0.12em" : "0.04em"};
+  color: ${accent};
 }
+${free ? `.chapter-divider .chapter-divider-title::before {
+  content: "";
+  display: block;
+  width: 1.6cm;
+  margin: 0 auto 0.7cm;
+  border-top: 0.75pt solid ${accent};
+}` : ""}
 `;
 }
