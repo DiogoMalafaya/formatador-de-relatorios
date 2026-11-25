@@ -18,10 +18,14 @@
  */
 
 import { escapeHtml } from "../html.ts";
-import { COVER_TEMPLATES } from "./templates.ts";
+import { COVER_TEMPLATES, coverBaseCss } from "./templates.ts";
+import type { CoverTokens } from "./templates.ts";
 import { formatLocalDeFormacao } from "./details.ts";
 import type { CoverDetails } from "./details.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
+import { documentTheme } from "../themes/index.ts";
+import type { EffectiveTheme } from "../themes/index.ts";
+import { fontStack } from "../pdf/fontFamilies.ts";
 
 const FALLBACK_CANDIDATE_NAME = "Candidato(a)";
 
@@ -95,6 +99,7 @@ export function mergeCoverWithDocument(
   const internatoPt = specialtyNamePt ? `Internato Médico de ${specialtyNamePt}` : "";
   const localPt = details ? formatLocalDeFormacao(details) : "";
 
+  const tokens = coverTokensFor(documentTheme(document));
   const coverHtml = cover.buildHtml({
     candidateName: escapeHtml(candidateName),
     dateLabel: escapeHtml(dateLabel),
@@ -145,7 +150,22 @@ export function mergeCoverWithDocument(
     ]
       .filter((part) => part.length > 0)
       .join("\n"),
-    css: `${document.css}\n\n${COVER_PAGE_BASE_CSS}\n${cover.css}`,
+    css: `${document.css}\n\n${COVER_PAGE_BASE_CSS}\n${coverBaseCss(tokens)}\n${cover.css(tokens)}`,
+  };
+}
+
+/**
+ * The cover's tokens from the effective theme (DIO-56). Colour only where
+ * the profile leaves the cover's colour free; otherwise black on white.
+ */
+export function coverTokensFor(theme: EffectiveTheme): CoverTokens {
+  return {
+    accent: theme.colourCover ? theme.accent : "#000000",
+    tint: theme.colourCover ? theme.accentTint : null,
+    onAccent: theme.colourCover ? theme.onAccent : "#000000",
+    colourFields: theme.colourCover,
+    displayFont: fontStack(theme.displayFamily),
+    displayItalic: theme.displayItalic,
   };
 }
 

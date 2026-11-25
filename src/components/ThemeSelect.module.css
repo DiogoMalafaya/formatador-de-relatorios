@@ -1,0 +1,110 @@
+.wrapper {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.label {
+  composes: fieldLabel from "../styles/controls.module.css";
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.card:hover {
+  background-color: var(--surface-sunken);
+}
+
+.cardSelected,
+.cardSelected:hover {
+  background-color: var(--sage-100);
+  border-color: var(--sage-700);
+}
+
+.swatch {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  background-color: var(--page-white); /* the swatch depicts the norm-white page */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.swatchSerif {
+  font-family: "Times New Roman", Tinos, serif;
+}
+
+.swatchSans {
+  font-family: Arial, Arimo, sans-serif;
+}
+
+.swatchBar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 5px;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font: var(--type-body-sm);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.description {
+  font: var(--type-body-sm);
+  color: var(--ink-600);
+}
+
+.note {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--ink-600);
+}
+
+.statusError {
+  composes: statusError from "../styles/controls.module.css";
+}
+
+.statusSuccess {
+  composes: statusSuccess from "../styles/controls.module.css";
+}
+
+.statusInfo {
+  composes: statusInfo from "../styles/controls.module.css";
+}

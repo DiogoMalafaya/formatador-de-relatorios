@@ -103,6 +103,8 @@ export interface SessionRecord {
   specialtyId?: string;
   /** Cover template id from DIO-12. */
   coverId?: string;
+  /** House theme id (DIO-56). Unset means the default theme; the profile constrains it either way. */
+  themeId?: string;
   /**
    * Local de formação, signatories and an optional name override for the
    * cover and página de rosto (DIO-50). Personal data: expires with the record.

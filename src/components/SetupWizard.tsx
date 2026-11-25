@@ -42,6 +42,8 @@ interface SetupWizardProps {
   /** Set when the stored specialty isn't supported (DIO-44) and must be chosen again. */
   unsupportedSpecialtyNamePt?: string;
   coverId?: string;
+  /** House theme (DIO-56); chosen in the workspace, never a wizard step. */
+  themeId?: string;
   /** Local de formação and signatories for the cover and rosto (DIO-50). */
   coverDetails?: CoverDetails;
   /**
@@ -78,6 +80,7 @@ export default function SetupWizard({
   specialtyId: initialSpecialtyId,
   unsupportedSpecialtyNamePt,
   coverId: initialCoverId,
+  themeId: initialThemeId,
   coverDetails: initialCoverDetails,
   paid,
   priceLabelPt,
@@ -87,6 +90,7 @@ export default function SetupWizard({
   const [filename, setFilename] = useState(uploadFilename);
   const [specialtyId, setSpecialtyId] = useState(initialSpecialtyId ?? "");
   const [coverId, setCoverId] = useState(initialCoverId ?? "");
+  const [themeId, setThemeId] = useState(initialThemeId ?? "");
   const [coverDetails, setCoverDetails] = useState<CoverDetails | undefined>(initialCoverDetails);
   // Mirrors `maxReachableStep`: a paid session never gets sent back for these.
   const coverComplete = coverId !== "" && (paid || isCoverDetailsComplete(coverDetails));
@@ -148,10 +152,12 @@ export default function SetupWizard({
           uploadFilename={filename}
           specialtyId={specialtyId}
           coverId={coverId}
+          themeId={themeId}
           coverDetails={coverDetails}
           paid={paid}
           priceLabelPt={priceLabelPt}
           onCoverSaved={setCoverId}
+          onThemeSaved={setThemeId}
           onEditUpload={() => goTo(1)}
           onEditSpecialty={() => goTo(2)}
           onEditCoverDetails={() => goTo(3)}

@@ -95,6 +95,7 @@ export async function prepareDocument(session: SessionRecord, options: PrepareOp
 
     const formatted = await applyFormatting(sourceBuffer, {
       ruleSetId,
+      ...(session.themeId ? { themeId: session.themeId } : {}),
       imagePlaceholders: options.imagePlaceholders ?? false,
     });
     return withCover(formatted, coverOptionsFor(session));
@@ -119,6 +120,7 @@ export async function prepareDocument(session: SessionRecord, options: PrepareOp
     sources: parsedSources,
     masterPosition: sources.findIndex((source) => source.index === master.index),
     ruleSetId,
+    ...(session.themeId ? { themeId: session.themeId } : {}),
     ...coverOptionsFor(session),
     imagePlaceholders: options.imagePlaceholders ?? false,
   });
@@ -153,6 +155,8 @@ export interface AssembleOptions {
   /** Index into `sources` of the documento principal. */
   masterPosition: number;
   ruleSetId: string;
+  /** House theme (DIO-56); the default theme when unset. */
+  themeId?: string;
   coverId?: string;
   /** Cover date; defaults to today. Fixed by the golden corpus for stable output. */
   dateLabel?: string;
@@ -197,7 +201,7 @@ export function assembleMultiFileDocument(options: AssembleOptions): PreparedDoc
     policed.filter((_, index) => index !== masterPosition),
   );
 
-  const formatted = formatParsedDocument(merged.document, { ruleSetId }, {
+  const formatted = formatParsedDocument(merged.document, { ruleSetId, themeId: options.themeId }, {
     constraintWarnings: perSourceWarnings,
     extraWarnings: merged.warnings,
   });

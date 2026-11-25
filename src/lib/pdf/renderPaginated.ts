@@ -18,6 +18,7 @@
  * invocation; no intermediate state is persisted anywhere.
  */
 
+import { documentTheme } from "../themes/index.ts";
 import { launchBrowser } from "./browser.ts";
 import { extractPageMap } from "./pageMap.ts";
 import {
@@ -139,7 +140,7 @@ export async function renderPaginatedPdf(
     document.css,
     PAGINATION_CSS,
     PAGE_MAP_PROBE_CSS,
-    dividerIds.length > 0 ? buildChapterDividerCss(ruleSet.title.sizePt.default) : "",
+    dividerIds.length > 0 ? buildChapterDividerCss(ruleSet.title.sizePt.default, documentTheme(document)) : "",
     buildPartBreakCss(headings, dividerIds.length > 0),
   ].join("\n");
   // A recto heading (dedication) is both a marker and a heading: probe it once.

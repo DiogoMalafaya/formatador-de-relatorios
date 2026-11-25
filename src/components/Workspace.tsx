@@ -11,6 +11,7 @@ import FormattingSummary from "./FormattingSummary";
 import FormattingWarnings from "./FormattingWarnings";
 import PageBudget from "./PageBudget";
 import PreviewPane from "./PreviewPane";
+import ThemeSelect from "./ThemeSelect";
 import styles from "./Workspace.module.css";
 
 /**
@@ -19,8 +20,9 @@ import styles from "./Workspace.module.css";
  * Right pane is dominated by the preview (≥60% of the viewport on desktop —
  * the container breaks out of the page column to make that true). Left rail
  * rehomes the formatting summary (DIO-17), warnings (DIO-18), document and
- * specialty facts with jump-back affordances into the wizard, and the cover
- * gallery (DIO-12) so a cover change never leaves the workspace.
+ * specialty facts with jump-back affordances into the wizard, the theme
+ * picker (DIO-56) and the cover gallery (DIO-12), so neither change ever
+ * leaves the workspace.
  *
  * The one primary action — checkout before payment (DIO-14), download after
  * (DIO-15) — is anchored so it stays visible without scrolling: as the sticky
@@ -38,6 +40,8 @@ interface WorkspaceProps {
   uploadFilename?: string;
   specialtyId: string;
   coverId: string;
+  /** House theme (DIO-56); empty means the default theme. */
+  themeId: string;
   /** Local de formação and signatories (DIO-50); edited in the wizard's cover step. */
   coverDetails?: CoverDetails;
   /** Payment state as the server rendered it; DownloadPanel re-verifies by polling. */
@@ -46,6 +50,7 @@ interface WorkspaceProps {
   priceLabelPt: string;
   /** Mirrors the wizard's cover state so leaving and revisiting keeps the choice. */
   onCoverSaved: (coverId: string) => void;
+  onThemeSaved: (themeId: string) => void;
   onEditUpload: () => void;
   onEditSpecialty: () => void;
   onEditCoverDetails: () => void;
@@ -55,10 +60,12 @@ export default function Workspace({
   uploadFilename,
   specialtyId,
   coverId,
+  themeId,
   coverDetails,
   paid,
   priceLabelPt,
   onCoverSaved,
+  onThemeSaved,
   onEditUpload,
   onEditSpecialty,
   onEditCoverDetails,
@@ -83,13 +90,13 @@ export default function Workspace({
             <div className={styles.previewHeader}>
               <h3 className={styles.previewTitle}>Pré-visualização</h3>
               <p className={styles.previewHint}>
-                Gratuita, com marca de água. Se mudares a capa, gera uma nova
-                pré-visualização.
+                Gratuita, com marca de água. Se mudares o tema ou a capa, gera
+                uma nova pré-visualização.
               </p>
             </div>
             <div className={styles.previewSlot}>
               <PreviewPane
-                key={`${coverId}|${JSON.stringify(coverDetails ?? {})}|${layoutVersion}`}
+                key={`${coverId}|${themeId}|${JSON.stringify(coverDetails ?? {})}|${layoutVersion}`}
                 onRendered={onRendered}
               />
             </div>
@@ -154,6 +161,14 @@ export default function Workspace({
               </section>
 
               <section className={styles.railSection}>
+                <ThemeSelect
+                  specialtyId={specialtyId}
+                  initialThemeId={themeId || undefined}
+                  onSaved={onThemeSaved}
+                />
+              </section>
+
+              <section className={styles.railSection}>
                 <CoverSelect initialCoverId={coverId || undefined} onSaved={onCoverSaved} />
               </section>
 
@@ -161,7 +176,7 @@ export default function Workspace({
                 <div className={styles.railSectionHead}>
                   <h3 className={styles.railLabel}>Formatação</h3>
                 </div>
-                <FormattingSummary />
+                <FormattingSummary key={themeId} />
               </section>
             </div>
           </div>

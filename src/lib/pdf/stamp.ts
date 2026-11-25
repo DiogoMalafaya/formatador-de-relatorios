@@ -24,7 +24,7 @@
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { FontFamily, RuleSet } from "../formatting/ruleSet.ts";
-import { readRegularFontFile } from "./fonts.ts";
+import { EMBEDDED_FONTS, readRegularFontFile } from "./fonts.ts";
 
 export interface StampOptions {
   /** Pages to keep; anything after is the page-map probe and gets dropped. */
@@ -80,7 +80,10 @@ export async function stampPages(pdfBytes: Buffer, options: StampOptions): Promi
   }
 
   doc.registerFontkit(fontkit);
-  const font = await doc.embedFont(readRegularFontFile(options.fontFamily), { subset: true });
+  // A variable face loses its outlines when subset (see `EmbeddedFamily.variable`).
+  const font = await doc.embedFont(readRegularFontFile(options.fontFamily), {
+    subset: EMBEDDED_FONTS[options.fontFamily].variable !== true,
+  });
   const name = options.includeCandidateName ? sanitizeForWinAnsi(options.candidateName) : "";
 
   const mirrored = options.mirrored === true && options.margins !== undefined;

@@ -258,7 +258,13 @@ rely on a system font: it works on a Mac and silently breaks in production.
 - `fonts.test.mts` renders real PDFs and asserts that no system font (Arial,
   Times, Helvetica, Verdana, Open Sans) appears in them.
 - Students never choose a font. Where the norms allow a choice (MFR: Arial
-  or Times New Roman), the profile's default applies.
+  or Times New Roman), the profile's default applies. Where the profile is
+  silent on typography, the **theme** picks the face (DIO-56).
+- Arimo is a **variable** font: pdf-lib's subsetter drops its outlines, so
+  stamped footers embed it whole (`EmbeddedFamily.variable`). Text extraction
+  can't see that bug, only rasterising can.
+- `fontFamilies.ts` is the pure half (no `node:fs`), safe for modules the
+  client bundle reaches; `fonts.ts` reads and serves the files.
 
 ### Quality gate (DIO-47)
 
@@ -351,7 +357,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **466 tests passing** on `main`. Some suites launch a real
+Current baseline: **505 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions
@@ -391,8 +397,21 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
 - **Tables are designed** (DIO-48, `src/lib/formatting/tables.ts`): header row
   (promoted when Word didn't mark one), numeric columns, Total row, captions
   renumbered above each table and a generated **Lista de tabelas** with exact
-  pages. Table colours are provisional tokens (`TABLE_TOKENS` in `styles.ts`)
-  until the house themes (DIO-56). The hero samples predate this and are stale.
+  pages. The header fill is the theme's accent (grey in strict mode). The
+  hero samples predate this and are stale.
+- **House themes** (DIO-56, `src/lib/themes/`): `sobria` (serif, navy, the
+  default) and `contemporanea` (sans, petrol green). `constrain(theme,
+  profile)` produces the `EffectiveTheme` the render uses: colour only where
+  the profile is silent on colour (MFR → strict, black), the theme's face
+  and a display face only where it is silent on typography (Q2a), colour
+  fields on the cover only where it is silent on colour *and* cover. The
+  theme colours h1/h2, caption labels, table headers and dividers. Chosen in
+  the workspace (`session.themeId`, `POST /api/session/theme`). Six cover
+  layouts (`covers/templates.ts`), each built from `CoverTokens`, so each
+  renders in both modes. `themes/compliance.test.mts` renders every theme ×
+  profile (and every cover in both modes) through the checker. The display
+  face is still an embedded body family set large/italic: no separate
+  display font has been added.
 - **Student images** (DIO-49, `src/lib/formatting/images.ts`): kept at their Word
   size (scaled down to the text width, never up) unless the profile forbids
   them. Under MFR they're removed (one `image-omitted` warning per image; a

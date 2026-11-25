@@ -24,6 +24,8 @@ import { extractCandidateName } from "./extractName.ts";
 import { getRuleSet } from "./ruleSet.ts";
 import type { FontFamily, RuleSet, TitleSizePt } from "./ruleSet.ts";
 import { buildRuleSetCss, resolveChoices } from "./styles.ts";
+import { constrain, resolveTheme } from "../themes/index.ts";
+import type { EffectiveTheme } from "../themes/index.ts";
 import { estimatePageCount } from "./pageEstimate.ts";
 import { applyBodyTypography } from "./typography.ts";
 import {
@@ -41,6 +43,8 @@ export interface ApplyFormattingOptions {
   imagePlaceholders?: boolean;
   fontFamily?: FontFamily;
   titleSizePt?: TitleSizePt;
+  /** House theme (DIO-56); the default theme when unset or unknown. Constrained by the profile. */
+  themeId?: string;
 }
 
 export interface FormattedDocument {
@@ -53,7 +57,14 @@ export interface FormattedDocument {
   extractedCandidateName?: string;
   /** The norm font in use, so the render can embed it in stamped footers too (DIO-46). */
   fontFamily: FontFamily;
+  /**
+   * The house theme after the profile's constraints (DIO-56), for the cover
+   * and dividers. Optional so hand-built documents in tests keep working;
+   * readers fall back to the default theme via `documentTheme` (themes/).
+   */
+  theme?: EffectiveTheme;
 }
+
 
 /**
  * The per-document constraint findings (forbidden images, restricted tables,
@@ -102,7 +113,10 @@ export function formatParsedDocument(
   overrides: FormatParsedOverrides = {},
 ): FormattedDocument {
   const ruleSet = getRuleSet(options.ruleSetId);
-  const choices = resolveChoices(ruleSet, options);
+  // The theme picks the body face where the profile doesn't (DIO-56); an
+  // explicit font option still wins where the profile allows it.
+  const theme = constrain(resolveTheme(options.themeId), ruleSet, { fontFamily: options.fontFamily });
+  const choices = resolveChoices(ruleSet, { ...options, fontFamily: theme.bodyFamily });
 
   const warnings: FormattingWarning[] = [
     ...(overrides.constraintWarnings ?? collectConstraintWarnings(parsed, ruleSet)),
@@ -120,11 +134,12 @@ export function formatParsedDocument(
     // Last step over the student's content (DIO-52): everything that reads
     // the text (merge, captions, name extraction) has already run.
     html: applyBodyTypography(parsed.html),
-    css: buildRuleSetCss(ruleSet, choices),
+    css: buildRuleSetCss(ruleSet, choices, theme),
     warnings,
     ruleSet,
     extractedCandidateName: extractCandidateName(parsed),
     fontFamily: choices.fontFamily,
+    theme,
   };
 }
 
