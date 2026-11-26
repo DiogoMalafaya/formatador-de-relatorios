@@ -357,7 +357,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **505 tests passing** on `main`. Some suites launch a real
+Current baseline: **511 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions
@@ -433,6 +433,9 @@ production Firestore is unaffected and the `setSessionStore` test seam still wor
   platform-dependent (Mac yes, serverless Linux no). Capitalised words, tables,
   headings and anything with a class are never hyphenated. "Label: value" lines
   get a bold label only in runs of ≥ 2. Size and line spacing are untouched.
+  Justification is asserted on the *rendered PDF* (`justification.test.mts`,
+  DIO-57): wrapped lines of a body paragraph must end flush right, single-file
+  and golden-corpus paths, MFR and Pediatria, with a ragged-right control.
 - **Section numbering** (DIO-53, `src/lib/merge/numbering.ts`): body headings
   are numbered in the merge ("1.", "1.2.", "1.2.3.", by tier below the body's
   top level, never skipping one); typed numbers ("3.1.", "IV -") are stripped
