@@ -122,6 +122,11 @@ export interface SessionRecord {
    * student turns it on in the workspace.
    */
   chapterDividers?: boolean;
+  /**
+   * Outer-edge chapter tabs for the printed CV (DIO-58). Off unless the
+   * student turns them on; only print-delivered profiles draw them.
+   */
+  chapterTabs?: boolean;
 
   payment: {
     status: PaymentStatus;

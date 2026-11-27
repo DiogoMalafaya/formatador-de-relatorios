@@ -105,7 +105,34 @@ export interface EffectiveTheme {
   colourCover: boolean;
   /** Type may go beyond the profile's sizes (divider numerals); false where typography is stated. */
   freeTypeScale: boolean;
+  /** How outer-edge chapter tabs are drawn (DIO-58), when the student turns them on. */
+  chapterTabs: ChapterTabStyle;
 }
+
+/**
+ * Chapter tab styling (DIO-58). `filled` is the house look: accent fill on
+ * the current chapter's tab, a neutral one on the others, a short title
+ * where it fits. `typographic` is what a profile that forbids colour gets
+ * (MFR): the chapter number only, in black, in the profile's font, at an
+ * allowed size. No fill, no rule, nothing drawn. The current chapter is
+ * set at the larger allowed title size.
+ */
+export type ChapterTabStyle =
+  | { kind: "typographic"; colour: string; sizePt: number; currentSizePt: number }
+  | {
+      kind: "filled";
+      sizePt: number;
+      currentFill: string;
+      currentText: string;
+      otherFill: string;
+      otherText: string;
+    };
+
+/** Neutral greys for the quieter tabs (one accent + neutrals, §6.2). */
+const TAB_NEUTRAL_FILL = "#ececec";
+const TAB_NEUTRAL_TEXT = "#5c5c5c";
+/** Tab text where the profile leaves type free: small enough for a short title. */
+const TAB_FREE_SIZE_PT = 8;
 
 export interface ConstrainOptions {
   /** An explicit body font (tests, legacy callers). Honoured only if the profile allows it. */
@@ -131,6 +158,28 @@ export function constrain(theme: HouseTheme, ruleSet: RuleSet, options: Constrai
     onAccent: colour ? theme.onAccent : "#000000",
     colourCover: colour && ruleSet.silentOn.includes("cover"),
     freeTypeScale: typographyFree,
+    chapterTabs: chapterTabStyle(theme, ruleSet, colour, typographyFree),
+  };
+}
+
+function chapterTabStyle(theme: HouseTheme, ruleSet: RuleSet, colour: boolean, typographyFree: boolean): ChapterTabStyle {
+  // Where typography is stated, tab text keeps to the profile's sizes.
+  const sizePt = typographyFree ? TAB_FREE_SIZE_PT : ruleSet.font.sizePt;
+  if (!colour || ruleSet.constraints.imagesForbidden) {
+    return {
+      kind: "typographic",
+      colour: "#000000",
+      sizePt,
+      currentSizePt: typographyFree ? sizePt + 2 : Math.max(sizePt, ...ruleSet.title.sizePt.options),
+    };
+  }
+  return {
+    kind: "filled",
+    sizePt,
+    currentFill: theme.accent,
+    currentText: theme.onAccent,
+    otherFill: TAB_NEUTRAL_FILL,
+    otherText: TAB_NEUTRAL_TEXT,
   };
 }
 

@@ -4,7 +4,8 @@ import { useEffect, useId, useState } from "react";
 import styles from "./PageBudget.module.css";
 
 /**
- * Live page budget and the chapter-divider toggle (DIO-54, PRD US7).
+ * Live page budget and the chapter-divider toggle (DIO-54, PRD US7), plus
+ * the outer-edge chapter tabs toggle (DIO-58), which costs no pages.
  *
  * Shows "84 / 100 páginas" from the last preview render, and the exact cost
  * of turning dividers on or off before anything re-renders. Over the
@@ -27,12 +28,21 @@ interface Budget {
 type Status =
   | { kind: "loading" }
   | { kind: "hidden" }
-  | { kind: "ready"; budget: Budget; dividersAvailable: boolean; blockedMessagePt?: string };
+  | {
+      kind: "ready";
+      budget: Budget;
+      dividersAvailable: boolean;
+      tabsAvailable: boolean;
+      tabsOn: boolean;
+      blockedMessagePt?: string;
+    };
 
 interface PageBudgetProps {
   refreshKey: number;
   /** After a successful toggle: the current preview no longer matches. */
   onDividersChanged: (enabled: boolean) => void;
+  /** Same, for the chapter tabs: the preview must re-render to show them. */
+  onTabsChanged: (enabled: boolean) => void;
   /** The blocking message while over the cap, `null` otherwise. */
   onBlockedChange: (messagePt: string | null) => void;
 }
@@ -41,12 +51,13 @@ function pagesLabel(count: number): string {
   return count === 1 ? "1 página" : `${count} páginas`;
 }
 
-export default function PageBudget({ refreshKey, onDividersChanged, onBlockedChange }: PageBudgetProps) {
+export default function PageBudget({ refreshKey, onDividersChanged, onTabsChanged, onBlockedChange }: PageBudgetProps) {
   const [status, setStatus] = useState<Status>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggleId = useId();
+  const tabsToggleId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +66,15 @@ export default function PageBudget({ refreshKey, onDividersChanged, onBlockedCha
       try {
         const response = await fetch("/api/session/page-budget");
         const body = (await response.json().catch(() => null)) as
-          | { ok: true; available: true; budget: Budget; dividersAvailable: boolean; blockedMessagePt?: string }
+          | {
+              ok: true;
+              available: true;
+              budget: Budget;
+              dividersAvailable: boolean;
+              tabsAvailable?: boolean;
+              tabsOn?: boolean;
+              blockedMessagePt?: string;
+            }
           | { ok: true; available: false }
           | { ok: false }
           | null;
@@ -69,6 +88,8 @@ export default function PageBudget({ refreshKey, onDividersChanged, onBlockedCha
           kind: "ready",
           budget: body.budget,
           dividersAvailable: body.dividersAvailable,
+          tabsAvailable: body.tabsAvailable === true,
+          tabsOn: body.tabsOn === true,
           ...(body.blockedMessagePt ? { blockedMessagePt: body.blockedMessagePt } : {}),
         });
         onBlockedChange(body.blockedMessagePt ?? null);
@@ -83,17 +104,18 @@ export default function PageBudget({ refreshKey, onDividersChanged, onBlockedCha
     };
   }, [refreshKey, reloadKey, onBlockedChange]);
 
-  async function toggleDividers(enabled: boolean) {
+  async function toggle(route: "chapter-dividers" | "chapter-tabs", enabled: boolean) {
     setSaving(true);
     setError(null);
     try {
-      const response = await fetch("/api/session/chapter-dividers", {
+      const response = await fetch(`/api/session/${route}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       });
       if (!response.ok) throw new Error("toggle failed");
-      onDividersChanged(enabled);
+      if (route === "chapter-dividers") onDividersChanged(enabled);
+      else onTabsChanged(enabled);
       setReloadKey((key) => key + 1);
     } catch {
       setError("Não foi possível guardar a opção. Tenta novamente.");
@@ -103,7 +125,7 @@ export default function PageBudget({ refreshKey, onDividersChanged, onBlockedCha
   }
 
   if (status.kind !== "ready") return null;
-  const { budget, dividersAvailable, blockedMessagePt } = status;
+  const { budget, dividersAvailable, tabsAvailable, tabsOn, blockedMessagePt } = status;
   const cost = budget.dividerPageCost;
   const fill =
     budget.pages !== undefined && budget.maxPages !== undefined
@@ -152,7 +174,7 @@ export default function PageBudget({ refreshKey, onDividersChanged, onBlockedCha
             className={styles.checkbox}
             checked={budget.dividersOn}
             disabled={saving}
-            onChange={(event) => void toggleDividers(event.target.checked)}
+            onChange={(event) => void toggle("chapter-dividers", event.target.checked)}
           />
           <label htmlFor={toggleId} className={styles.optionText}>
             <span className={styles.optionTitle}>Separadores de capítulo</span>
@@ -163,6 +185,25 @@ export default function PageBudget({ refreshKey, onDividersChanged, onBlockedCha
                   ? ` (${pagesLabel(cost)} incluídas).`
                   : ` (+${pagesLabel(cost)}).`
                 : "."}
+            </span>
+          </label>
+        </div>
+      )}
+
+      {tabsAvailable && (
+        <div className={styles.option}>
+          <input
+            id={tabsToggleId}
+            type="checkbox"
+            className={styles.checkbox}
+            checked={tabsOn}
+            disabled={saving}
+            onChange={(event) => void toggle("chapter-tabs", event.target.checked)}
+          />
+          <label htmlFor={tabsToggleId} className={styles.optionText}>
+            <span className={styles.optionTitle}>Marcadores de capítulo</span>
+            <span className={styles.optionHint}>
+              Na margem exterior, para encontrares cada capítulo na versão impressa. Não acrescenta páginas.
             </span>
           </label>
         </div>

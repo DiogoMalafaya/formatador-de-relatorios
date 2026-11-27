@@ -55,6 +55,7 @@ import { pageLimitExceededWarning, summaryTooLongWarning } from "../formatting/w
 import { printMargins } from "../formatting/ruleSet.ts";
 import { serveEmbeddedFonts } from "./fonts.ts";
 import { furnitureLayout, stampPages } from "./stamp.ts";
+import { chapterTabsAvailable, planChapterTabs } from "./chapterTabs.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 
@@ -77,6 +78,12 @@ export interface PaginatedRenderOptions {
    * unless the student turns it on. Costs exactly `chapterDividerPageCost`.
    */
   chapterDividers?: boolean;
+  /**
+   * Outer-edge chapter tabs (DIO-58). Off unless the student turns them on,
+   * and ignored where the profile can't carry them (`chapterTabsAvailable`).
+   * They add no pages.
+   */
+  chapterTabs?: boolean;
 }
 
 /** What actually happened, for validations, tests and timing reports. Never contains document text. */
@@ -98,6 +105,8 @@ export interface PaginatedRenderReport {
   tocStartPage?: number;
   /** Running-header text per page (null = none), as stamped. */
   headers: (string | null)[];
+  /** Per page: the index of the emphasised chapter tab, or null where no tabs are drawn (DIO-58). */
+  chapterTabs: (number | null)[];
   /** Render passes it took to converge (2 in the normal case). */
   passes: number;
   timings: { passMs: number[]; totalMs: number };
@@ -240,6 +249,19 @@ export async function renderPaginatedPdf(
       )
     : new Array<string | null>(totalPages).fill(null);
 
+  const tabsOn = options.chapterTabs === true && chapterTabsAvailable(ruleSet);
+  const tabChapters = tabsOn ? partHeadings(headings) : [];
+  const tabPlan = planChapterTabs({
+    chapters: tabChapters,
+    // A chapter with a divider starts on the divider: it belongs to it.
+    startPages: tabChapters.map(
+      (heading) => markerPages.get(chapterDividerId(heading.id)) ?? plan.headingPages.get(heading.id),
+    ),
+    totalPages,
+    blankPages: new Set(blankPages),
+  });
+  const chapterTabs = tabPlan.tabs.length > 0 ? tabPlan.current : new Array<number | null>(totalPages).fill(null);
+
   const pdf = await stampPages(pdfBytes, {
     contentPageCount: totalPages,
     pageLabels,
@@ -249,6 +271,7 @@ export async function renderPaginatedPdf(
     includeCandidateName: ruleSet.footer.includeCandidateName,
     includePageNumber: ruleSet.footer.includePageNumber,
     ...furnitureLayout(ruleSet),
+    ...(tabPlan.tabs.length > 0 ? { chapterTabs: { ...tabPlan, style: documentTheme(document).chapterTabs } } : {}),
   });
 
   const warnings: FormattingWarning[] = [];
@@ -285,6 +308,7 @@ export async function renderPaginatedPdf(
         ? { tocStartPage: plan.markerPages.get(TOC_START_MARKER_ID) }
         : {}),
       headers,
+      chapterTabs,
       passes,
       timings: { passMs, totalMs: Date.now() - startedAt },
     },

@@ -14,6 +14,7 @@ import type { MergeSource } from "../merge/types.ts";
 import { buildMasterWithListsAfterTocFixture } from "../merge/testFixtures.ts";
 import { checkPdfCompliance } from "../compliance/checkPdf.ts";
 import { partHeadings } from "./paginate.ts";
+import { tabBand } from "./chapterTabs.ts";
 
 /**
  * End-to-end two-pass render (DIO-42). Like `render.test.mts` these launch a
@@ -386,6 +387,130 @@ describe("renderPaginatedPdf — mirrored furniture for duplex printing (DIO-55)
     const { pdf } = await renderPaginatedPdf(pediatria, { candidateName: "Ana Pereira", headings });
     for (const page of (await furniture(pdf)).slice(1)) {
       for (const item of page.footer) assert.ok(Math.abs(item.mid - page.width / 2) < 2, "centred footer");
+    }
+  });
+});
+
+describe("renderPaginatedPdf — outer-edge chapter tabs (DIO-58)", () => {
+  interface BandText {
+    str: string;
+    size: number;
+  }
+  /** Text items in each page's outer and inner tab band (inner = where tabs must never be). */
+  async function bandTexts(pdf: Buffer, margins: Parameters<typeof tabBand>[1]) {
+    const loading = getDocument({ data: new Uint8Array(pdf), verbosity: 0 });
+    const pdfjs = await loading.promise;
+    const pages: { outer: BandText[]; inner: BandText[] }[] = [];
+    for (let n = 1; n <= pdfjs.numPages; n += 1) {
+      const page = await pdfjs.getPage(n);
+      const [, , width, height] = page.view;
+      const items = (await page.getTextContent()).items.filter(
+        (item): item is TextItem => "str" in item && item.str.trim() !== "",
+      );
+      const inside = (band: ReturnType<typeof tabBand>, item: TextItem) =>
+        item.transform[4] >= band.x - 2 &&
+        item.transform[4] + item.width <= band.x + band.width + 2 &&
+        item.transform[5] >= band.y - 2 &&
+        item.transform[5] <= band.y + band.height + 2;
+      const outerBand = tabBand({ width, height }, margins, n);
+      // The other side's band: the same geometry with the parity flipped.
+      const innerBand = tabBand({ width, height }, margins, n + 1);
+      const at = (item: TextItem) => ({ str: item.str.trim(), size: Math.hypot(item.transform[0], item.transform[1]) });
+      pages.push({
+        outer: items.filter((item) => inside(outerBand, item)).map(at),
+        inner: items.filter((item) => inside(innerBand, item)).map(at),
+      });
+    }
+    await loading.destroy();
+    return pages;
+  }
+
+  test("MFR with dividers: typographic tabs on the outer edge, current chapter emphasised, compliant", async () => {
+    const { headings, merged } = await mergedFixture();
+    const mfr = formatParsedDocument(merged.document, { ruleSetId: "mfr" }, { extraWarnings: merged.warnings });
+    const off = await renderPaginatedPdf(mfr, { candidateName: "Ana Pereira", headings, chapterDividers: true });
+    const on = await renderPaginatedPdf(mfr, {
+      candidateName: "Ana Pereira",
+      headings,
+      chapterDividers: true,
+      chapterTabs: true,
+    });
+    const chapters = partHeadings(headings);
+    assert.ok(chapters.length >= 2 && on.report.blankPages.length > 0, "the fixture exercises chapters and blanks");
+
+    // Tabs add no pages and leave the blank plan a fixed point.
+    assert.equal(on.report.totalPages, off.report.totalPages);
+    assert.deepEqual(on.report.blankPages, off.report.blankPages);
+    assert.equal(on.report.passes, 2);
+    assert.ok(off.report.chapterTabs.every((tab) => tab === null), "toggle off: no tabs");
+
+    const pages = await bandTexts(on.pdf, mfr.ruleSet.margins);
+    const firstChapterPage = on.report.dividerPages[0];
+    let tabbed = 0;
+    for (const [i, page] of pages.entries()) {
+      const pageNumber = i + 1;
+      const current = on.report.chapterTabs[i];
+      assert.deepEqual(page.inner, [], `page ${pageNumber}: nothing in the inner band`);
+      if (pageNumber === 1 || on.report.blankPages.includes(pageNumber) || pageNumber < firstChapterPage) {
+        assert.equal(current, null, `page ${pageNumber}: cover, blanks and front matter have no tabs`);
+        assert.deepEqual(page.outer, [], `page ${pageNumber}: no tab drawn`);
+        continue;
+      }
+      assert.notEqual(current, null, `page ${pageNumber}: a body page carries tabs`);
+      assert.deepEqual(
+        page.outer.map((item) => item.str),
+        chapters.map((_, index) => String(index + 1)),
+        `page ${pageNumber}: one number per chapter, in order`,
+      );
+      for (const [index, item] of page.outer.entries()) {
+        assert.ok(Math.abs(item.size - (index === current ? 14 : 12)) < 0.3, `page ${pageNumber}: current at 14 pt, others 12 pt`);
+      }
+      tabbed += 1;
+    }
+    assert.ok(tabbed > 4);
+    for (const [index, divider] of on.report.dividerPages.entries()) {
+      assert.equal(on.report.chapterTabs[divider - 1], index, "a divider page belongs to its chapter");
+    }
+
+    const violations = await checkPdfCompliance(new Uint8Array(on.pdf), {
+      ruleSet: mfr.ruleSet,
+      fontFamily: mfr.fontFamily,
+      candidateName: "Ana Pereira",
+      skip: ["cover-fields", "rosto-signatures", "candidate-signature"],
+    });
+    assert.deepEqual(violations, [], "margins, font size, footer, black text and no images all hold with tabs on");
+  });
+
+  test("house standard: filled tabs with the theme's accent, still inside the band", async () => {
+    const { document, headings } = await mergedFixture();
+    const { pdf, report } = await renderPaginatedPdf(document, {
+      candidateName: "Ana Pereira",
+      headings,
+      chapterTabs: true,
+    });
+    const pages = await bandTexts(pdf, document.ruleSet.margins);
+    const tabbedPages = report.chapterTabs.flatMap((tab, i) => (tab === null ? [] : [i]));
+    assert.ok(tabbedPages.length > 2);
+    for (const i of tabbedPages) {
+      assert.equal(pages[i].outer.length, partHeadings(headings).length, `page ${i + 1}: one label per chapter`);
+      assert.deepEqual(pages[i].inner, []);
+    }
+    const violations = await checkPdfCompliance(new Uint8Array(pdf), {
+      ruleSet: document.ruleSet,
+      fontFamily: document.fontFamily,
+      candidateName: "Ana Pereira",
+      skip: ["cover-fields"],
+    });
+    assert.deepEqual(violations.filter((v) => v.check === "margins" || v.check === "font-size"), []);
+  });
+
+  test("Pediatria (PDF delivery) never gets tabs", async () => {
+    const { headings, merged } = await mergedFixture();
+    const pediatria = formatParsedDocument(merged.document, { ruleSetId: "pediatria" }, { extraWarnings: merged.warnings });
+    const { pdf, report } = await renderPaginatedPdf(pediatria, { candidateName: "Ana Pereira", headings, chapterTabs: true });
+    assert.ok(report.chapterTabs.every((tab) => tab === null));
+    for (const page of await bandTexts(pdf, pediatria.ruleSet.margins)) {
+      assert.deepEqual([...page.outer, ...page.inner], []);
     }
   });
 });

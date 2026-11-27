@@ -47,6 +47,7 @@ export async function renderFinalPdf(session: SessionRecord): Promise<RenderedFi
           lowResolutionImages: prepared.merge.lowResolutionImages,
           rectoHeadingIds: prepared.merge.rectoHeadingIds,
           chapterDividers: session.chapterDividers === true,
+          chapterTabs: session.chapterTabs === true,
         })
       ).pdf
     : await renderPdf(prepared.document, { candidateName: prepared.candidateName });

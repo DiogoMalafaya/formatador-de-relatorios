@@ -20,6 +20,8 @@ export interface CorpusRenderOptions {
   themeId?: string;
   /** Chapter divider pages (DIO-54). */
   chapterDividers?: boolean;
+  /** Outer-edge chapter tabs (DIO-58). */
+  chapterTabs?: boolean;
 }
 
 export async function renderCorpusCase(
@@ -47,6 +49,7 @@ export async function renderCorpusCase(
     lowResolutionImages: prepared.merge.lowResolutionImages,
     rectoHeadingIds: prepared.merge.rectoHeadingIds,
     ...(options.chapterDividers ? { chapterDividers: true } : {}),
+    ...(options.chapterTabs ? { chapterTabs: true } : {}),
   });
   return { prepared, result };
 }

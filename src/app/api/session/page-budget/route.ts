@@ -2,13 +2,15 @@ import { getCurrentSession } from "@/lib/session/cookies";
 import { getRuleSet } from "@/lib/formatting/ruleSet";
 import { resolveRuleSetId } from "@/lib/specialties";
 import { DocumentNotReadyError, prepareDocument } from "@/lib/rendering/prepareDocument";
-import { chapterDividerPageCost } from "@/lib/pdf/paginate";
+import { chapterDividerPageCost, partHeadings } from "@/lib/pdf/paginate";
+import { chapterTabsAvailable } from "@/lib/pdf/chapterTabs";
 import { computePageBudget, pageCapBlockedMessagePt } from "@/lib/rendering/pageBudget";
 import { SESSION_EXPIRED_PT, UNEXPECTED_ERROR_PT, UPLOAD_REQUIRED_PT } from "@/lib/errors/messages";
 
 /**
  * The workspace's live page budget (DIO-54): pages / the profile's cap, the
  * divider toggle's state and exact cost, and whether checkout is blocked.
+ * Also the chapter-tab toggle's state (DIO-58), which costs no pages.
  *
  * The divider cost is worked out from the session's current documents (a
  * parse, no render), so the toggle can show its cost before the first
@@ -36,6 +38,9 @@ export async function GET() {
       available: true,
       budget,
       dividersAvailable: dividerPageCost > 0,
+      // Chapter tabs (DIO-58) add no pages, so they're only an on/off here.
+      tabsAvailable: chapterTabsAvailable(ruleSet) && partHeadings(prepared.merge.headings).length > 0,
+      tabsOn: session.chapterTabs === true,
       ...(budget.overCap ? { blockedMessagePt: pageCapBlockedMessagePt(budget) } : {}),
     });
   } catch (error) {
