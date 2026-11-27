@@ -6,9 +6,10 @@ import { renderPdf } from "../pdf/render.ts";
 import { applyFormatting } from "../formatting/apply.ts";
 import type { FormattedDocument } from "../formatting/apply.ts";
 import { getRuleSet, HOUSE_RULE_SET_ID } from "../formatting/ruleSet.ts";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { readRegularFontFile } from "../pdf/fonts.ts";
+import { tabBand } from "../pdf/chapterTabs.ts";
 import { buildDocx, heading, imageParagraph, longParagraphs, paragraph } from "../formatting/testFixtures.ts";
 
 /**
@@ -100,6 +101,82 @@ describe("checkPdfCompliance (DIO-47)", () => {
       skip: ["cover-fields", "rosto-signatures", "candidate-signature"],
     });
     assert.deepEqual(found.map((violation) => violation.check), ["margins"]);
+  });
+
+  describe("chapter tabs in the outer margin (DIO-58)", () => {
+    const A4: [number, number] = [595.28, 841.89];
+    /** A hand-built two-page PDF with one text item per page, like the margins test above. */
+    async function check(ruleSetId: string, draws: { page: 1 | 2; x: number; y: number; text?: string; size?: number }[]) {
+      const ruleSet = getRuleSet(ruleSetId);
+      const fontFamily = ruleSet.font.family.default;
+      const doc = await PDFDocument.create();
+      doc.registerFontkit(fontkit);
+      const font = await doc.embedFont(readRegularFontFile(fontFamily), { subset: true });
+      const pages = [doc.addPage(A4), doc.addPage(A4)];
+      for (const draw of draws) {
+        pages[draw.page - 1].drawText(draw.text ?? "3", { x: draw.x, y: draw.y, size: draw.size ?? 12, font });
+      }
+      const found = await checkPdfCompliance(await doc.save(), {
+        ruleSet,
+        fontFamily,
+        candidateName: NAME,
+        skip: ["cover-fields", "rosto-signatures", "candidate-signature"],
+      });
+      return found.map((violation) => violation.check);
+    }
+    const band = (ruleSetId: string, page: number) => tabBand({ width: A4[0], height: A4[1] }, getRuleSet(ruleSetId).margins, page);
+    const middle = (rect: ReturnType<typeof band>) => ({ x: rect.x + rect.width / 2 - 3, y: rect.y + rect.height / 2 });
+
+    test("a tab in the outer band passes, on a recto and on a verso, at either allowed size", async () => {
+      assert.deepEqual(
+        await check("mfr", [
+          { page: 1, ...middle(band("mfr", 1)), size: 14 },
+          { page: 2, ...middle(band("mfr", 2)), size: 12 },
+        ]),
+        [],
+      );
+    });
+
+    test("the same mark on the inner side is still text in the margins", async () => {
+      // The recto's inner side is where a verso's tab would be.
+      assert.deepEqual(await check("mfr", [{ page: 1, ...middle(band("mfr", 2)) }]), ["margins"]);
+    });
+
+    test("body text running past the text block still fails, even into the band", async () => {
+      const right = A4[0] - getRuleSet("mfr").margins.rightCm * (72 / 2.54);
+      assert.deepEqual(
+        await check("mfr", [{ page: 1, x: right - 60, y: 400, text: "Texto fictício que transborda a margem" }]),
+        ["margins"],
+      );
+    });
+
+    test("a tab above or below the text block's height is not a tab", async () => {
+      const outer = band("mfr", 1);
+      assert.deepEqual(await check("mfr", [{ page: 1, x: middle(outer).x, y: outer.y + outer.height + 20 }]), []);
+      // Above the text block is the running header's zone (allowed); below it, the footer's, which says too much.
+      assert.deepEqual(await check("mfr", [{ page: 1, x: middle(outer).x, y: outer.y - 20 }]), ["footer-content"]);
+    });
+
+    test("Pediatria (PDF delivery) has no tab band: the same mark is text in the margins", async () => {
+      const outer = band("pediatria", 1);
+      assert.deepEqual(await check("pediatria", [{ page: 1, ...middle(outer), size: 10 }]), ["margins"]);
+    });
+
+    test("a tab is still held to the text colour", async () => {
+      const ruleSet = getRuleSet("mfr");
+      const doc = await PDFDocument.create();
+      doc.registerFontkit(fontkit);
+      const font = await doc.embedFont(readRegularFontFile(ruleSet.font.family.default), { subset: true });
+      const page = doc.addPage(A4);
+      page.drawText("3", { ...middle(band("mfr", 1)), size: 12, font, color: rgb(0.1, 0.2, 0.6) });
+      const found = await checkPdfCompliance(await doc.save(), {
+        ruleSet,
+        fontFamily: ruleSet.font.family.default,
+        candidateName: NAME,
+        skip: ["cover-fields", "rosto-signatures", "candidate-signature"],
+      });
+      assert.deepEqual(found.map((violation) => violation.check), ["text-colour"]);
+    });
   });
 
   test("catches a system font", async () => {

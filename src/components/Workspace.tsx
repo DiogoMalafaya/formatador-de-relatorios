@@ -78,6 +78,7 @@ export default function Workspace({
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [blockedMessagePt, setBlockedMessagePt] = useState<string | null>(null);
   const onRendered = useCallback(() => setRenderCount((count) => count + 1), []);
+  // Dividers and chapter tabs both change the page's layout: re-render the preview.
   const onDividersChanged = useCallback(() => setLayoutVersion((version) => version + 1), []);
 
   const specialtyName = getSpecialtyById(specialtyId)?.name ?? specialtyId;
@@ -156,6 +157,7 @@ export default function Workspace({
                 <PageBudget
                   refreshKey={renderCount}
                   onDividersChanged={onDividersChanged}
+                  onTabsChanged={onDividersChanged}
                   onBlockedChange={setBlockedMessagePt}
                 />
               </section>

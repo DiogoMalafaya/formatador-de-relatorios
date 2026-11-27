@@ -14,6 +14,7 @@
 import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
 import { getDocument, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { EMBEDDED_FONTS } from "../pdf/fonts.ts";
+import { chapterTabsAvailable, tabBand } from "../pdf/chapterTabs.ts";
 import type { FontFamily, NormDimension, RuleSet } from "../formatting/ruleSet.ts";
 import type { FormattingWarning } from "../formatting/warnings.ts";
 
@@ -122,6 +123,7 @@ export async function checkPdfCompliance(pdf: Uint8Array, options: ComplianceOpt
       bottom: ruleSet.margins.bottomCm * POINTS_PER_CM,
       left: ruleSet.margins.leftCm * POINTS_PER_CM,
     };
+    const sanctionTabs = chapterTabsAvailable(ruleSet);
     const minSize = ruleSet.font.sizePt;
     const maxSize = Math.max(ruleSet.font.sizePt, ...ruleSet.title.sizePt.options);
 
@@ -131,12 +133,30 @@ export async function checkPdfCompliance(pdf: Uint8Array, options: ComplianceOpt
       const content = await page.getTextContent();
       const items = (content.items as TextItem[]).filter((item) => typeof item.str === "string" && item.str.trim().length > 0);
 
+      // Chapter tabs (DIO-58) sit in a documented band of the *outer* margin,
+      // within the text block's height, on profiles that can carry them. Text
+      // there is a section reference like the running header, not body text
+      // in the margin. Anything else outside the text block still fails.
+      const band = sanctionTabs ? tabBand({ width, height }, ruleSet.margins, pageNumber) : undefined;
+      const inTabBand = (item: TextItem) => {
+        if (!band) return false;
+        const x = item.transform[4];
+        const y = item.transform[5];
+        return (
+          x >= band.x - POSITION_TOLERANCE_PT &&
+          x + item.width <= band.x + band.width + POSITION_TOLERANCE_PT &&
+          y >= band.y - POSITION_TOLERANCE_PT &&
+          y <= band.y + band.height + POSITION_TOLERANCE_PT
+        );
+      };
+
       const footer: TextItem[] = [];
       const body: TextItem[] = [];
       for (const item of items) {
         const y = item.transform[5];
         if (y < margins.bottom - POSITION_TOLERANCE_PT) footer.push(item);
         else if (y > height - margins.top + POSITION_TOLERANCE_PT) continue; // running header: a section reference, allowed
+        else if (inTabBand(item)) continue; // chapter tab: a section reference too (still held to text colour)
         else body.push(item);
       }
 

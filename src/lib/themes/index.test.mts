@@ -34,6 +34,8 @@ describe("house themes (DIO-56)", () => {
       assert.equal(effective.displayItalic, false);
       assert.equal(effective.colourCover, false);
       assert.equal(effective.freeTypeScale, false);
+      // DIO-58: typographic chapter tabs, black, at MFR's own sizes (12 pt body, 14 pt title).
+      assert.deepEqual(effective.chapterTabs, { kind: "typographic", colour: "#000000", sizePt: 12, currentSizePt: 14 });
     }
   });
 
@@ -58,6 +60,13 @@ describe("house themes (DIO-56)", () => {
       assert.equal(effective.displayFamily, theme.displayFamily);
       assert.equal(effective.accent, theme.accent);
       assert.equal(effective.colourCover, true);
+      // DIO-58: accent-filled tab for the current chapter, neutral for the others.
+      assert.equal(effective.chapterTabs.kind, "filled");
+      if (effective.chapterTabs.kind === "filled") {
+        assert.equal(effective.chapterTabs.currentFill, theme.accent);
+        assert.equal(effective.chapterTabs.currentText, theme.onAccent);
+        assert.notEqual(effective.chapterTabs.otherFill, theme.accent);
+      }
     }
   });
 

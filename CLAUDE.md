@@ -212,6 +212,25 @@ why DIO-40/41/42 exist.
   the profile's cap disables checkout and the checkout route refuses it; a
   count only applies while `renderInputsKey` still matches the session.
   Theme-styled dividers and the accent verso belong to DIO-56.
+- **Chapter tabs (DIO-58)** are opt-in too (`session.chapterTabs`, a second
+  workspace toggle under the dividers, `/api/session/chapter-tabs`). A thumb
+  index on the outer vertical edge, one tab per body major part
+  (`partHeadings`) stacked in chapter order, current chapter emphasised,
+  mirrored by absolute page parity like the DIO-55 furniture and additive to
+  the running header. Only where `chapterTabsAvailable` (print delivery and
+  `header.allowed`), so never Pediatria. Stamped by pdf-lib in `stamp.ts`;
+  geometry and the per-page plan live in `pdf/chapterTabs.ts` (pure). No
+  tabs on the cover, the front matter or truly blank fillers; divider pages
+  carry their chapter's. They add **no pages**, so the budget is unchanged.
+  Style comes from `constrain()` (`EffectiveTheme.chapterTabs`): MFR gets
+  `typographic` (black numbers, 12 pt, current one at 14 pt, nothing drawn);
+  colour-silent profiles get `filled` (accent for the current chapter, neutral
+  for the others, short titles only when every tab's title fits).
+  The checker sanctions **only** that band: text inside the outer margin's
+  tab band, within the text block's height, on profiles that can carry tabs,
+  is skipped by `margins` and `font-size` the way the running header is.
+  It still counts for `text-colour` and images. The inner side, the band on
+  Pediatria, and body text spilling out of the text block all still fail.
 - **Exact-count validations:** the profile's page cap and its summary-section cap are
   checked against the real page count, superseding the estimate for a paginated
   render. Results land on the session record (`artifacts.renderWarnings`,
@@ -357,7 +376,7 @@ npm test           # node --test, files named *.test.mts
 Tests are `.test.mts` and run on Node's built-in runner with native TypeScript
 stripping — no test framework. They import siblings with an explicit `.ts`
 extension because Node's ESM resolver does not do extension search.
-Current baseline: **505 tests passing** on `main`. Some suites launch a real
+Current baseline: **520 tests passing** on `main`. Some suites launch a real
 local Chrome (`src/lib/pdf/*`), so they are slower than the rest.
 
 ## Sessions

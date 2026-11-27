@@ -22,9 +22,13 @@
  */
 
 import { PDFDocument, rgb } from "pdf-lib";
+import type { PDFFont, PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import type { FontFamily, RuleSet } from "../formatting/ruleSet.ts";
+import type { FontFamily, PageMargins, RuleSet } from "../formatting/ruleSet.ts";
+import type { ChapterTabStyle } from "../themes/index.ts";
 import { EMBEDDED_FONTS, readRegularFontFile } from "./fonts.ts";
+import { tabBand, tabRects } from "./chapterTabs.ts";
+import type { ChapterTabPlan, Rect } from "./chapterTabs.ts";
 
 export interface StampOptions {
   /** Pages to keep; anything after is the page-map probe and gets dropped. */
@@ -43,8 +47,13 @@ export interface StampOptions {
   mirrored?: boolean;
   /** Hairline rules above the footer and under the running header (DIO-55). */
   rules?: boolean;
-  /** Left/right page margins, to align furniture with the text block. */
-  margins?: { leftCm: number; rightCm: number };
+  /** Page margins, to align furniture with the text block (and tabs with its height). */
+  margins?: PageMargins;
+  /**
+   * Outer-edge chapter tabs (DIO-58): mirrored like the furniture, so they
+   * need `mirrored` and `margins`. Absent = no tabs.
+   */
+  chapterTabs?: ChapterTabPlan & { style: ChapterTabStyle };
 }
 
 /**
@@ -58,7 +67,7 @@ export function furnitureLayout(
   return {
     mirrored: ruleSet.page.delivery === "print",
     rules: ruleSet.kind !== "explicit",
-    margins: { leftCm: ruleSet.margins.leftCm, rightCm: ruleSet.margins.rightCm },
+    margins: { ...ruleSet.margins },
   };
 }
 
@@ -135,9 +144,92 @@ export async function stampPages(pdfBytes: Buffer, options: StampOptions): Promi
         if (options.rules && options.margins) hairline(y - RULE_GAP);
       }
     }
+
+    const current = options.chapterTabs?.current[index];
+    if (mirrored && options.chapterTabs && options.margins && current !== null && current !== undefined) {
+      const band = tabBand({ width: page.getWidth(), height: page.getHeight() }, options.margins, index + 1);
+      const rects = tabRects(band, options.chapterTabs.tabs.length);
+      const labels = chapterTabLabels(options.chapterTabs.tabs, options.chapterTabs.style, font, band.width);
+      labels.forEach((label, tabIndex) =>
+        drawChapterTab(page, font, rects[tabIndex], label, tabIndex === current, options.chapterTabs!.style),
+      );
+    }
   });
 
   return Buffer.from(await doc.save());
+}
+
+/** Inner padding of a filled tab, so a title never touches its edges. */
+const TAB_PADDING_PT = 3;
+
+/**
+ * What each tab says (DIO-58). Typographic tabs carry the chapter number.
+ * Filled tabs carry a short title (the title, or its first word cut short)
+ * when *every* tab's fits on one line, and the numbers otherwise: a column
+ * mixing words and numbers reads as a mistake.
+ */
+function chapterTabLabels(
+  tabs: readonly { number: string; title: string }[],
+  style: ChapterTabStyle,
+  font: PDFFont,
+  tabWidth: number,
+): string[] {
+  const numbers = tabs.map((tab) => sanitizeForWinAnsi(tab.number));
+  if (style.kind === "typographic") return numbers;
+  const fits = (text: string) =>
+    text.length > 0 && font.widthOfTextAtSize(text, style.sizePt) <= tabWidth - 2 * TAB_PADDING_PT;
+  const titles = tabs.map((tab) => {
+    const title = sanitizeForWinAnsi(tab.title).toLocaleUpperCase("pt-PT");
+    const firstWord = title.split(" ")[0];
+    return [title, firstWord !== title ? `${firstWord}…` : ""].find(fits);
+  });
+  return titles.every((title) => title !== undefined) ? (titles as string[]) : numbers;
+}
+
+/**
+ * One chapter tab (DIO-58). Typographic: the label alone, black, centred
+ * in its slot, the current chapter at the larger size. Filled: the accent
+ * (current) or a neutral (others) block with the label on it. Vector
+ * fills, never an image.
+ */
+function drawChapterTab(
+  page: PDFPage,
+  font: PDFFont,
+  rect: Rect,
+  label: string,
+  isCurrent: boolean,
+  style: ChapterTabStyle,
+): void {
+  const centred = (text: string, size: number, colour: ReturnType<typeof rgb>) => {
+    const width = font.widthOfTextAtSize(text, size);
+    const capHeight = font.heightAtSize(size, { descender: false });
+    page.drawText(text, {
+      x: rect.x + (rect.width - width) / 2,
+      y: rect.y + (rect.height - capHeight) / 2,
+      size,
+      font,
+      color: colour,
+    });
+  };
+
+  if (style.kind === "typographic") {
+    if (label.length > 0) centred(label, isCurrent ? style.currentSizePt : style.sizePt, hexToRgb(style.colour));
+    return;
+  }
+
+  page.drawRectangle({
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+    color: hexToRgb(isCurrent ? style.currentFill : style.otherFill),
+  });
+  if (label.length > 0) centred(label, style.sizePt, hexToRgb(isCurrent ? style.currentText : style.otherText));
+}
+
+function hexToRgb(hex: string): ReturnType<typeof rgb> {
+  const value = Number.parseInt(hex.replace(/^#/, ""), 16);
+  return rgb(((value >> 16) & 0xff) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255);
 }
 
 /**

@@ -69,6 +69,7 @@ export async function renderPreviewPdf(session: SessionRecord): Promise<Rendered
       lowResolutionImages: prepared.merge.lowResolutionImages,
       rectoHeadingIds: prepared.merge.rectoHeadingIds,
       chapterDividers: session.chapterDividers === true,
+      chapterTabs: session.chapterTabs === true,
     });
     pdf = rendered.pdf;
     renderWarnings = rendered.warnings;
